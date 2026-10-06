@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Normalization in Deep Learning: A Textbook-Style Treatment</title>
+<style>
+:root{--bg:#fff;--fg:#1d2330;--mut:#5b6475;--ac:#2b59c3;--card:#f3f5fa;--bd:#d9deea;--warn:#b4570a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151c;--fg:#e4e8f0;--mut:#9aa3b5;--ac:#8fb0ff;--card:#1b2030;--bd:#2c3347;--warn:#f0a35e}}
+:root[data-theme="dark"]{--bg:#12151c;--fg:#e4e8f0;--mut:#9aa3b5;--ac:#8fb0ff;--card:#1b2030;--bd:#2c3347;--warn:#f0a35e}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.7 Georgia,'Times New Roman',serif}
+main{max-width:880px;margin:0 auto;padding:20px 16px 80px}
+h1{font:700 2rem/1.2 system-ui,sans-serif;margin:.3em 0}
+h2{font:700 1.5rem/1.3 system-ui,sans-serif;margin:2.6em 0 .6em;padding-top:.7em;border-top:3px solid var(--bd)}
+h3{font:600 1.15rem/1.3 system-ui,sans-serif;margin:1.8em 0 .4em;color:var(--ac)}
+h4{font:600 1rem/1.3 system-ui,sans-serif;margin:1.3em 0 .3em}
+.box,.def,.warn,.ex{background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--ac);padding:.5em 1em;margin:1.1em 0;border-radius:6px}
+.warn{border-left-color:var(--warn)}
+.ex{border-left-color:#3a9a5b}
+.box>b:first-child,.def>b:first-child,.warn>b:first-child,.ex>b:first-child{font-family:system-ui,sans-serif}
+.sc{overflow-x:auto;max-width:100%}
+table{border-collapse:collapse;font:14px/1.45 system-ui,sans-serif;margin:1em 0;min-width:560px}
+th,td{border:1px solid var(--bd);padding:6px 9px;text-align:left;vertical-align:top}
+th{background:var(--card)}
+code{font:.86em ui-monospace,Menlo,monospace;background:var(--card);padding:1px 4px;border-radius:3px}
+pre{background:var(--card);padding:12px;overflow-x:auto;border-radius:6px;font-size:.82em;line-height:1.5;border:1px solid var(--bd)}
+pre code{background:none;padding:0}
+mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%}
+.mut{color:var(--mut)}
+nav.toc{background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:.4em 1.2em;font:15px/1.6 system-ui,sans-serif}
+a{color:var(--ac)}
+</style>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js"></script>
+</head>
+<body><main>
+<h1>Normalization in Deep Learning</h1>
+<p class="mut">A textbook-style treatment of BatchNorm, LayerNorm, RMSNorm, GroupNorm and relatives: derivations, theory, placement, architectures, implementation, exercises and a reading list.</p>
+<nav class="toc"><b>Contents</b>
+<ol start="0">
+<li><a href="#c0">Why normalize? Preliminaries</a></li>
+<li><a href="#c1">A unifying framework</a></li>
+<li><a href="#c2">Batch Normalization</a></li>
+<li><a href="#c3">Layer Normalization</a></li>
+<li><a href="#c4">RMS Normalization</a></li>
+<li><a href="#c5">Group and Instance Normalization</a></li>
+<li><a href="#c6">Normalization in residual networks and Transformers</a></li>
+<li><a href="#c7">Other techniques</a></li>
+<li><a href="#c8">Practical engineering: optimizers, precision, parallelism, inference</a></li>
+<li><a href="#c9">Architecture case studies and relevance</a></li>
+<li><a href="#c10">Implementation from scratch</a></li>
+<li><a href="#c11">Exercises and research experiments</a></li>
+<li><a href="#c12">Reading list</a></li>
+</ol></nav>
+<p><b>Notation.</b> Scalars \(a\), vectors \(\mathbf a\) (bold when it helps), matrices \(W\). \(\mathbb E\) is expectation, \(\bar a\) an empirical mean, \(\odot\) element-wise product, \(\mathbf 1\) the all-ones vector. A feature tensor is \(x\in\mathbb R^{N\times C\times H\times W}\) (images) or \(\mathbb R^{N\times T\times C}\) (sequences, with \(C=d_{model}\)). \(L\) is the loss, \(\epsilon\) a small constant, \(m=|S|\) the size of a normalization set.</p>
+
+<h2 id="c0">0. Why normalize? Preliminaries</h2>
+<h3>0.1 Conditioning of the optimization problem</h3>
+<p>Consider linear regression with loss \(L(w)=\tfrac12\mathbb E[(w^\top x-y)^2]\). The Hessian is \(H=\mathbb E[xx^\top]=\Sigma+\mu\mu^\top\), where \(\mu=\mathbb E x\) and \(\Sigma\) the covariance. If the inputs have a large mean, \(\mu\mu^\top\) adds an eigenvalue of roughly \(\|\mu\|^2\) along \(\mu\), which inflates the condition number \(\kappa=\lambda_{\max}/\lambda_{\min}\). Gradient descent on a quadratic converges at rate \(\big(\tfrac{\kappa-1}{\kappa+1}\big)^t\) with the best fixed step \(2/(\lambda_{\max}+\lambda_{\min})\), so large \(\kappa\) means small allowable learning rate and slow progress along flat directions. LeCun et al. (1998, <i>Efficient BackProp</i>) therefore recommended <b>centering</b> and <b>scaling</b> (and ideally whitening) the inputs.</p>
+<p>In a deep network, the input to layer \(l\) is the output of layer \(l-1\). Its mean and scale drift as the earlier weights change. Normalization layers apply the "standardize your inputs" principle at every layer, cheaply (diagonal, not full whitening).</p>
+<h3>0.2 Signal propagation at initialization</h3>
+<p>Take a plain ReLU MLP, \(h_{l+1}=\mathrm{ReLU}(W_lh_l)\) with \(W_l\in\mathbb R^{n\times n}\), i.i.d. entries of variance \(\sigma_w^2\). Then \(\mathbb E\|h_{l+1}\|^2\approx\tfrac{n\sigma_w^2}{2}\mathbb E\|h_l\|^2\), so after \(L\) layers the squared norm scales as \(\big(n\sigma_w^2/2\big)^L\): it explodes or vanishes unless \(\sigma_w^2=2/n\) (He initialization). Backward signals follow the same recursion. This is the fragility normalization removes: if each layer re-standardizes its input, the forward scale is <i>pinned</i> regardless of \(\sigma_w\).</p>
+<div class="box"><b>Key idea.</b> Normalization buys (i) a better-conditioned loss (centering/scaling), (ii) controlled forward and backward signal scale, (iii) invariance to certain reparameterizations (weight scale, data offset), and (iv) in the case of BN, noise-based regularization. It does <i>not</i> come for free: it adds coupling (across the batch for BN, across features for LN), extra memory traffic, train/test discrepancies (BN), and new failure modes in depth (Chapter 6).</div>
+
+<h3>0.3 The "internal covariate shift" story and what replaced it</h3>
+<p>The original BN paper motivated normalization by <i>internal covariate shift</i> (ICS): the distribution of a layer's inputs changes during training. Santurkar et al. (2018) show that (a) BN networks do not obviously have less ICS, and (b) injecting noise to <i>increase</i> ICS after BN does not hurt training. The better-supported account is the smoothing of the loss landscape, scale invariance and effective learning-rate adaptation (Chapter 2). Treat ICS as the historical motivation, not the explanation.</p>
+
+<h2 id="c1">1. A unifying framework</h2>
+<div class="def"><b>Definition (set normalization).</b> Given an index set \(S\) of size \(m\) and entries \(x_i, i\in S\), define
+$$\mu_S=\frac1m\sum_{k\in S}x_k,\qquad \sigma_S^2=\frac1m\sum_{k\in S}(x_k-\mu_S)^2,\qquad \hat x_i=\frac{x_i-\mu_S}{\sigma_i},\ \ \sigma:=\sqrt{\sigma_S^2+\epsilon},\qquad y_i=\gamma_{c(i)}\hat x_i+\beta_{c(i)}$$
+where \(c(i)\) is the channel of entry \(i\) and \(\gamma,\beta\) are learned per-channel (not per-set) parameters. RMS-type normalization sets \(\mu_S\equiv0\) and \(\beta=0\).</div>
+<div class="sc"><table>
+<tr><th>Method</th><th>Set \(S\) (what is pooled)</th><th>\(m\)</th><th>Batch coupling</th><th>Train = eval?</th></tr>
+<tr><td>BatchNorm</td><td>all \(n,h,w\) for one channel \(c\)</td><td>\(NHW\)</td><td>yes</td><td>no</td></tr>
+<tr><td>LayerNorm (Transformer)</td><td>all channels of one token</td><td>\(C\)</td><td>no</td><td>yes</td></tr>
+<tr><td>LayerNorm (conv, Ba et al.)</td><td>\(c,h,w\) of one sample</td><td>\(CHW\)</td><td>no</td><td>yes</td></tr>
+<tr><td>InstanceNorm</td><td>\(h,w\) of one \((n,c)\)</td><td>\(HW\)</td><td>no</td><td>yes</td></tr>
+<tr><td>GroupNorm</td><td>\(C/G\) channels, all \(h,w\), one sample</td><td>\(\tfrac CGHW\)</td><td>no</td><td>yes</td></tr>
+<tr><td>RMSNorm</td><td>all channels of one token (no mean)</td><td>\(C\)</td><td>no</td><td>yes</td></tr>
+</table></div>
+
+<h3>1.1 The universal backward pass</h3>
+<p>Let \(g_i=\partial L/\partial\hat x_i\) (for the affine layer \(g_i=\gamma\,\partial L/\partial y_i\) and \(\partial L/\partial\gamma=\sum_{i}\tfrac{\partial L}{\partial y_i}\hat x_i\), \(\partial L/\partial\beta=\sum_i\tfrac{\partial L}{\partial y_i}\), summed over all entries sharing the channel). <b>Derivation.</b> Using \(\partial\mu/\partial x_i=1/m\) and \(\partial\sigma/\partial x_i=(x_i-\mu)/(m\sigma)=\hat x_i/m\) (because \(\sigma^2=\sigma_S^2+\epsilon\) and \(\partial\sigma_S^2/\partial x_i=\tfrac2m(x_i-\mu)\)):
+$$\frac{\partial\hat x_j}{\partial x_i}=\frac{\delta_{ij}-1/m}{\sigma}-\frac{(x_j-\mu)}{\sigma^2}\frac{\partial\sigma}{\partial x_i}=\frac1\sigma\Big(\delta_{ij}-\frac1m-\frac{\hat x_j\hat x_i}{m}\Big).$$
+Contracting with \(g_j\):
+$$\boxed{\ \frac{\partial L}{\partial x_i}=\frac1\sigma\Big(g_i-\bar g-\hat x_i\,\overline{g\hat x}\Big),\qquad \bar g=\tfrac1m\sum_j g_j,\ \ \overline{g\hat x}=\tfrac1m\sum_j g_j\hat x_j\ }$$
+In matrix form the Jacobian of \(x\mapsto\hat x\) is \(J=\tfrac1\sigma\big(I-\tfrac1m\mathbf 1\mathbf 1^\top-\tfrac1m\hat x\hat x^\top\big)\). This holds for BN, LN, IN and GN; only the set \(S\) changes. When \(\epsilon\to0\): \(\mathbf 1^\top\hat x=0\) and \(\|\hat x\|^2=m\), so the matrix in brackets is an <b>orthogonal projector of rank \(m-2\)</b> onto the complement of \(\mathrm{span}\{\mathbf 1,\hat x\}\). Interpretation: (1) gradients lose their mean component (the layer is invariant to input offsets); (2) gradients lose their component along \(\hat x\) (invariant to input scale); (3) the overall gradient is divided by \(\sigma\): large pre-activations are down-weighted.</p>
+<div class="box"><b>Consequence for the next chapters.</b> BN/LN/GN backprop differ only in <i>which entries are coupled</i>. For BN, example \(i\)'s gradient depends on the other \(N-1\) examples; for LN it depends only on its own features.</div>
+
+<h3>1.2 Invariances</h3>
+<ul>
+<li><b>Weight-scale invariance</b> (BN, LN, GN, IN on a linear layer): \(\mathrm{Norm}((cW)h)=\mathrm{Norm}(Wh)\) for \(c&gt;0\) (for ε→0). Consequences: \(W\) lives effectively on a sphere; the learning-rate dynamics are altered (§2.5).</li>
+<li><b>Input offset invariance</b>: adding a constant to every entry in \(S\) does not change \(\hat x\) (mean-subtracting norms only; <i>not</i> RMSNorm).</li>
+<li><b>Input scale invariance</b>: multiplying all entries in \(S\) by \(c&gt;0\) leaves \(\hat x\) unchanged (also true for RMSNorm).</li>
+<li><b>Bias redundancy</b>: a bias in the preceding linear layer is absorbed into \(\mu_S\) when the set contains whole channels (BN, LN over channels). Use <code>bias=False</code>.</li>
+</ul>
+
+<h2 id="c2">2. Batch Normalization</h2>
+<h3>2.1 Definition</h3>
+<p>For channel \(c\), pool \(S_c=\{(n,h,w)\}\), \(m=NHW\). In training,
+$$\mu_c=\tfrac1m\sum_{S_c}x,\qquad \sigma_c^2=\tfrac1m\sum_{S_c}(x-\mu_c)^2,\qquad y=\gamma_c\frac{x-\mu_c}{\sqrt{\sigma_c^2+\epsilon}}+\beta_c.$$
+Running averages for inference (PyTorch momentum \(\rho=0.1\), i.e. weight \(\rho\) on the new value):
+$$\mu^{run}\leftarrow(1-\rho)\mu^{run}+\rho\mu_c,\qquad (\sigma^{2})^{run}\leftarrow(1-\rho)(\sigma^2)^{run}+\rho\frac{m}{m-1}\sigma_c^2.$$
+At inference \(y=\gamma\frac{x-\mu^{run}}{\sqrt{(\sigma^2)^{run}+\epsilon}}+\beta\): a <b>fixed affine map</b>. The training forward pass uses a different function (batch statistics, which depend on the other examples). This train/eval discrepancy is intrinsic to BN.</p>
+<h3>2.2 Backward pass (specialized)</h3>
+<p>Apply §1.1 with \(g_i=\gamma\,\partial L/\partial y_i\). Gradient to \(\gamma\) is \(\sum_i \tfrac{\partial L}{\partial y_i}\hat x_i\); to \(\beta\) is \(\sum_i\tfrac{\partial L}{\partial y_i}\).</p>
+<div class="ex"><b>Worked example.</b> A single channel with batch \(x=(1,2,3,6)\), \(\epsilon\approx0\). Then \(\mu=3\), \(\sigma^2=3.5\), \(\sigma=1.871\) and \(\hat x=(-1.069,-0.535,0,1.604)\) (check: \(\sum\hat x^2=4=m\)). Suppose \(\gamma=1\) and the loss gradient is \(g=(1,0,0,0)\) (only the first example matters). Then \(\bar g=0.25\), \(\overline{g\hat x}=-1.069/4=-0.267\), and
+$$\frac{\partial L}{\partial x_i}=\frac1\sigma\big(g_i-0.25+0.267\,\hat x_i\big)=(0.248,\,-0.210,\,-0.134,\,0.096).$$
+Even though only example 1 contributed to the loss, <b>every</b> example receives gradient, and the gradient sums to zero and is orthogonal to \(\hat x\) (\(\sum \tfrac{\partial L}{\partial x_i}\hat x_i=0\)). This is exactly the batch coupling.</div>
+<h3>2.3 BN in convolutional layers; folding</h3>
+<p>For a conv layer the statistics pool over \(N,H,W\) so each <i>filter</i> has one \(\gamma,\beta\) and one running mean/variance. At inference, with \(s_c=\gamma_c/\sqrt{(\sigma^2_c)^{run}+\epsilon}\):
+$$W_c'=s_cW_c,\qquad b_c'=\beta_c+s_c\,(b_c-\mu_c^{run}).$$
+BN thus vanishes into the conv at deployment (zero runtime cost), a big reason BN stays popular in edge CNNs. Quantization-aware training should simulate this fold.</p>
+<h3>2.4 Why BN helps: the Lipschitz view</h3>
+<p>Let \(\hat L\) be the loss as a function of the BN <i>output</i> and \(L\) as a function of the pre-BN activations. By §1.1 (with \(\gamma\) absorbed) the gradient with respect to the pre-BN activations of one channel satisfies (Santurkar et al., Lemma 4.2)
+$$\|\nabla_x L\|^2=\frac{\gamma^2}{\sigma^2}\Big(\|g\|^2-\tfrac1m\langle\mathbf 1,g\rangle^2-\tfrac1m\langle g,\hat x\rangle^2\Big)\le\frac{\gamma^2}{\sigma^2}\|g\|^2.$$
+The loss is therefore <b>more Lipschitz</b> with respect to activations, with the bound scaled down when \(\sigma\) is large. A similar argument controls the Hessian (gradient "\(\beta\)-smoothness"), so the gradient is more predictive: a larger step in the gradient direction remains a descent step. Empirically this permits learning rates 10× or more larger than without BN.</p>
+<h3>2.5 Scale invariance and effective learning rate</h3>
+<p>Let \(f(w)\) be invariant to positive scaling of \(w\), i.e. \(f(cw)=f(w)\) (the weights of any BN-ed unit, ε→0). Differentiate in \(c\) at 1: \(\langle\nabla f(w),w\rangle=0\) (<b>gradient orthogonal to the weights</b>). Differentiate in \(w\): \(\nabla f(cw)=\tfrac1c\nabla f(w)\). With SGD, \(w'=w-\eta\nabla f(w)\):
+$$\|w'\|^2=\|w\|^2+\eta^2\|\nabla f(w)\|^2\ \ (\text{norm only grows}),\qquad \hat w:=\tfrac{w}{\|w\|},\ \ \hat w'\approx\hat w-\underbrace{\tfrac{\eta}{\|w\|^2}}_{\eta_{\rm eff}}\nabla f(\hat w).$$
+So the <b>effective learning rate on the sphere is \(\eta/\|w\|^2\)</b>: it self-decays as \(\|w\|\) grows, an automatic annealing. With weight decay \(\lambda\), \(w'=(1-\eta\lambda)w-\eta\nabla f\), and the norm equilibrates when
+$$2\eta\lambda\|w\|^2\approx\eta^2\|\nabla f(w)\|^2=\eta^2\frac{\|\nabla f(\hat w)\|^2}{\|w\|^2}\ \Rightarrow\ \|w\|^4\approx\frac{\eta\|\nabla f(\hat w)\|^2}{2\lambda},\qquad\text{angular step}\ \approx\frac{\eta\|\nabla f(\hat w)\|}{\|w\|^2}=\sqrt{2\eta\lambda}.$$
+<b>Take-away:</b> for BN/LN/GN-ed layers, weight decay does not regularize "capacity"; it sets a steady-state <i>angular learning rate</i> \(\sqrt{2\eta\lambda}\). This is why \(\eta\) and \(\lambda\) must be tuned together and why changing \(\eta\) without rescaling \(\lambda\) changes the training dynamics. (See van Laarhoven 2017; Wan et al. 2020; Li &amp; Arora 2019.)</p>
+<h3>2.6 BN at initialization in deep networks</h3>
+<p>Forward: BN pins each layer's activation scale to 1 regardless of weight scale. But the mean-field analysis of Yang et al. (2019) shows that in deep <i>non-residual</i> BN networks at initialization the <b>gradient norm explodes exponentially with depth</b>, and the activations of different examples in the batch become highly correlated (near-rank-collapse of the batch). Residual connections plus BN (ResNet) cure this: BN on the residual branch makes it small relative to the skip (De &amp; Smith 2020), so blocks start close to identity. That is the mechanism behind "BN enables very deep ResNets".</p>
+<h3>2.7 Noise and regularization</h3>
+<p>Batch statistics are noisy estimates of population statistics: \(\mathrm{Var}(\hat\mu_B)=\sigma^2/B\) (per channel, with \(B\) examples; for conv the pooling over \(HW\) reduces it only if positions are weakly correlated). Each example's normalized value therefore carries zero-mean noise whose magnitude shrinks with \(B\). This acts as a stochastic regularizer (explaining why BN-ed nets overfit less, and why accuracy depends on batch size). It also creates the train/eval discrepancy: at test time the noise is gone and a different (running) estimate is used.</p>
+<h3>2.8 Batch-size effects and variants</h3>
+<ul>
+<li><b>Large \(B\)</b>: accurate stats, little regularization; often the learning rate is scaled linearly with \(B\) (Goyal et al., 2017) with warm-up.</li>
+<li><b>Small \(B\)</b> (&lt;~8–16): noisy stats and mismatch with running averages → degraded accuracy. Fixes: GroupNorm, Batch Renormalization, SyncBN (statistics all-reduced across GPUs), FrozenBN (use pretrained statistics as constants; standard in detection fine-tuning).</li>
+<li><b>Ghost BN</b> (Hoffer et al. 2017): compute statistics over virtual sub-batches, to mimic small-batch noise in large-batch training.</li>
+<li><b>Train/eval mismatch fix</b>: re-estimate running statistics with a pass over the training set in train-mode without gradient updates ("precise BN", Wu &amp; Johnson 2021).</li>
+</ul>
+<h3>2.9 Failure modes (summary)</h3>
+<ul>
+<li>Non-i.i.d. batches (correlated trajectories in RL, sorted-by-length batches, one-domain batches).</li>
+<li>Information leakage across batch elements (contrastive learning: MoCo uses shuffle-BN; models can "cheat" via the batch statistic).</li>
+<li>Padding and masks polluting the statistics in sequence models.</li>
+<li>Causal / streaming inference with batch of 1.</li>
+<li>Dropout before BN shifts the variance between train and test (Li et al., 2018).</li>
+<li>Domain shift: running stats from the source domain are wrong in the target (AdaBN re-estimates them).</li>
+</ul>
+<div class="warn"><b>Pitfall.</b> Forgetting <code>model.eval()</code> at test time, or evaluating with batches composed differently from training, are the most common sources of "BN bugs".</div>
+<h2 id="c3">3. Layer Normalization</h2>
+<h3>3.1 Definition and motivation</h3>
+<p>Ba, Kiros &amp; Hinton (2016) wanted a normalizer for recurrent networks, where BN is awkward (statistics would be needed per time step, and sequence lengths vary). Their solution: pool over the <i>features of a single example</i>. For a vector \(x\in\mathbb R^d\) (one token, one time step):
+$$\mu=\frac1d\sum_{j=1}^dx_j,\quad\sigma^2=\frac1d\sum_{j=1}^d(x_j-\mu)^2,\quad y=\gamma\odot\frac{x-\mu}{\sqrt{\sigma^2+\epsilon}}+\beta,\quad\gamma,\beta\in\mathbb R^d.$$
+There is no batch dependence, no running statistics and no train/eval difference. Parameters: \(2d\). In a Transformer it is applied independently to each token position.</p>
+<h3>3.2 Backward pass and geometry</h3>
+<p>From §1.1 with \(m=d\) and \(g=\gamma\odot\partial L/\partial y\):
+$$\frac{\partial L}{\partial x}=\frac1\sigma\Big(g-\bar g\mathbf 1-\hat x\,\overline{g\hat x}\Big),\qquad J=\frac1\sigma\Big(I-\tfrac1d\mathbf 1\mathbf 1^\top-\tfrac1d\hat x\hat x^\top\Big).$$
+<b>Geometry.</b> Writing \(x=\mu\mathbf1+x_\perp\) (decomposition into the all-ones direction and its orthogonal complement), LN does two things: (i) <i>projects</i> out the \(\mathbf 1\) component (\(x\mapsto x_\perp\), a linear projection onto a \((d-1)\)-dimensional subspace), (ii) <i>rescales</i> \(x_\perp\) to norm \(\sqrt d\) (a radial projection onto a sphere). Hence the output of LN (before the affine) lives on a \((d-2)\)-sphere of radius \(\sqrt d\) in the hyperplane \(\mathbf1^\top\hat x=0\). Information about the token's overall scale and mean is destroyed by design.</p>
+<p><b>Eigen-structure of \(J\).</b> For \(\epsilon\to0\), \(\sigma J\) is a rank-\((d-2)\) orthogonal projector: all directions in \(\mathrm{span}\{\mathbf1,\hat x\}\) are mapped to zero, and all others scaled by \(1/\sigma\). A token with small \(\sigma\) (near-constant features) has a huge Jacobian: that is why \(\epsilon\) matters and why LN can amplify gradients for near-degenerate tokens.</p>
+<h3>3.3 What matters in LN? Empirical/theoretical findings</h3>
+<ul>
+<li>Xu et al. (2019) find that the <b>derivatives</b> of the normalization (gradient re-centering and re-scaling) matter more than the forward statistics, and that \(\gamma,\beta\) can overfit in some tasks (LayerNorm-simple, without them, was better on several benchmarks).</li>
+<li>Brody et al. (2023, <i>On the Expressivity Role of LayerNorm in Transformers' Attention</i>) argue that the mean-projection lets attention treat all keys symmetrically (no key can be unselectable because it lies along \(\mathbf1\)), and the rescaling gives all keys the same norm, so no key dominates attention only by magnitude. (Check the paper for exact statements.)</li>
+<li>Outlier "massive activations" (Sun et al., 2024) in LLM residual streams are largely created by specific channels interacting with the norm layers and are used as attention sinks, which has implications for quantization (Chapter 8).</li>
+</ul>
+<h3>3.4 LN variants in vision/audio</h3>
+<ul>
+<li><b>Over \((C,H,W)\)</b> (original conv LN; <code>GroupNorm(1,C)</code>): couples all spatial positions; destroys absolute activation maps' relative contrasts across space; mediocre for CNNs.</li>
+<li><b>Channels-last per-pixel LN</b> (ConvNeXt, Swin, ViT): normalize over \(C\) at every position, exactly the Transformer LN.</li>
+<li><b>Speech separation (Conv-TasNet)</b>: <i>gLN</i> pools channels and all time frames of a sample; <i>cLN</i> pools channels and all <i>past</i> frames (causal): \(\mu_t=\tfrac{1}{tC}\sum_{k\le t}\sum_cx_{c,k}\).</li>
+<li><b>Recurrent nets</b>: LN applied separately to the input-to-hidden and hidden-to-hidden pre-activations of each gate, for every time step.</li>
+</ul>
+<h3>3.5 BN vs LN in Transformers</h3>
+<p>BN works poorly in NLP Transformers: token statistics have heavy tails and vary across batches, padding corrupts them, and the batch-coupling hurts (Shen et al., PowerNorm, 2020 measured large fluctuations of batch statistics and their gradients). LN, being per-token, is immune. In vision Transformers (ViT) either can train, but LN is the standard.</p>
+
+<h2 id="c4">4. RMS Normalization</h2>
+<h3>4.1 Definition and the key identity</h3>
+<p>Zhang &amp; Sennrich (2019) hypothesize that the benefit of LN comes from re-scaling invariance, not re-centering. They keep only the scale:
+$$\mathrm{RMS}(x)=\sqrt{\tfrac1d\textstyle\sum_jx_j^2+\epsilon},\qquad y=\frac{x}{\mathrm{RMS}(x)}\odot g,\qquad g\in\mathbb R^d.$$
+<b>Identity.</b> \(\tfrac1d\sum x_j^2=\sigma^2+\mu^2\). Therefore \(\mathrm{RMSNorm}(x)\) equals LN of \(x\) (without \(\beta\)) exactly when \(\mu=0\), and differs by the factor \(\sqrt{\sigma^2/(\sigma^2+\mu^2)}\) otherwise. In a pre-norm residual stream with many near-zero-mean features, \(|\mu|\ll\sigma\) and the two behave almost identically.</p>
+<h3>4.2 Backward pass</h3>
+<p>With \(r=\mathrm{RMS}(x)\), \(\hat x=x/r\), \(g_i=\gamma_i\partial L/\partial y_i\), the derivation parallels §1.1 but with no mean term:
+$$\frac{\partial L}{\partial x}=\frac1r\Big(g-\hat x\,\overline{g\hat x}\Big),\qquad J=\frac1r\Big(I-\tfrac1d\hat x\hat x^\top\Big)=\frac1r\Big(I-\frac{xx^\top}{\|x\|^2}\Big)\ (\epsilon\to0).$$
+This is a rank-\((d-1)\) orthogonal projector scaled by \(1/r\): gradient is made orthogonal to the input. The output lies on the sphere \(\|\hat x\|=\sqrt d\). Compared with LN, one fewer direction (\(\mathbf 1\)) is projected out.</p>
+<h3>4.3 Cost and variants</h3>
+<ul>
+<li>LN needs mean and variance (two reductions, or one with Welford/sum-of-squares); RMSNorm needs a single sum of squares and no \(\beta\): fewer FLOPs and parameters. The paper reports ~7–64% speedups, depending on model and hardware. Because norms are memory-bound, real gains depend on fused kernels.</li>
+<li><b>pRMSNorm</b> estimates \(r\) from only the first \(p\%\) of the dimensions (e.g. ~6%) for more savings; rarely used.</li>
+<li><b>Gemma</b> parameterizes the gain as \(1+g\) so that zero-init is the identity gain; <b>T5</b> uses an RMS-style norm without bias; <b>Llama</b> computes in fp32 and casts back (<a href="#c10">Chapter 10</a>).</li>
+</ul>
+<div class="box"><b>When RMS vs LN?</b> Default to RMSNorm for new pre-norm Transformer/LLM work (cheaper, as good in practice). Keep LN when you rely on feature-centering (e.g. features with a meaningful large mean) or are reproducing a specific pre-trained model (BERT, ViT, CLIP, Whisper encoder).</div>
+
+<h2 id="c5">5. Group and Instance Normalization</h2>
+<h3>5.1 Definition</h3>
+<p>Partition the \(C\) channels into \(G\) contiguous groups of \(C/G\) channels. For sample \(n\) and group \(g\) let \(S_{n,g}=\{(c,h,w):\lfloor cG/C\rfloor=g\}\), \(m=\tfrac CGHW\). Then apply the set normalization of §1 with per-channel \(\gamma_c,\beta_c\). The backward pass is §1.1.
+$$G=1:\ \text{LayerNorm over }(C,H,W);\qquad G=C:\ \text{InstanceNorm};\qquad \text{common default } G=32.$$
+</p>
+<h3>5.2 Motivation</h3>
+<p>Wu &amp; He (2018) observed that classical hand-crafted features (SIFT, HOG) are group-wise normalized, and that convolution filters tend to come in families (e.g. similar orientations or frequencies) whose responses co-vary. Normalizing across such a family keeps relative strengths within a group while decoupling from batch size. Reported: ResNet-50 on ImageNet with GN has nearly flat error from batch size 32 down to 2, while BN degrades quickly. On large batches BN is a bit better (about 0.5% in their results), as expected from its regularization noise.</p>
+<h3>5.3 Instance Norm and style</h3>
+<p>InstanceNorm (\(G=C\), pool \(H,W\)) removes per-image, per-channel mean and variance, which carry <i>contrast/style</i> information. Ulyanov et al. (2016) found it greatly improves feed-forward style transfer. <b>AdaIN</b> (Huang &amp; Belongie, 2017) re-injects another image's statistics:
+$$\mathrm{AdaIN}(x,s)=\sigma(s)\,\frac{x-\mu(x)}{\sigma(x)}+\mu(s),$$
+making style a function of channel-wise statistics. StyleGAN replaces the \(\mu,\sigma\) of a learned style vector for the same purpose and StyleGAN2 replaces instance norm by weight demodulation to remove droplet artifacts.</p>
+<h3>5.4 Practical notes</h3>
+<ul>
+<li>Choose \(G\) dividing \(C\); sensitivity to \(G\) is mild in a range 8–32. For small \(C\) (e.g. 16) use \(G=C/2\) or so.</li>
+<li>GN statistics have a large pool when spatial maps are large, so they are accurate; with tiny maps (e.g. \(1\times1\) late in a net) GN is close to LN.</li>
+<li>Weight Standardization (Qiao et al., 2019) + GN recovers or exceeds BN performance at small batch.</li>
+<li>Diffusion U-Nets (DDPM, Stable Diffusion) use GN(32) with SiLU: batch-free, stable with noise-level conditioning.</li>
+</ul>
+
+<h2 id="c6">6. Normalization in residual networks and Transformers</h2>
+<h3>6.1 The residual stream view</h3>
+<p>A residual network updates a stream: \(x_{l+1}=x_l+F_l(\cdot)\). Where the norm sits relative to the skip path determines (i) the gradient path through depth and (ii) the growth of activations. Let \(N\) denote a norm layer.
+$$\text{Post-norm:}\ x_{l+1}=N\big(x_l+F_l(x_l)\big)\qquad\text{Pre-norm:}\ x_{l+1}=x_l+F_l\big(N(x_l)\big)$$
+</p>
+<h3>6.2 Heuristic signal propagation analysis</h3>
+<h4>Pre-norm</h4>
+<p>Unroll: \(x_L=x_0+\sum_{l=0}^{L-1}F_l(N(x_l))\). If branches are roughly uncorrelated with variance \(a^2\) each and \(\mathrm{Var}(x_0)=1\), then \(\mathrm{Var}(x_l)\approx1+la^2\): <b>linear growth with depth</b>. The Jacobian of one block is \(I+\frac{\partial F_l}{\partial u}\,\frac{\partial N}{\partial x_l}\), with \(\|\partial N/\partial x_l\|\sim1/\sigma_l\sim1/\sqrt{1+la^2}\). So the identity path has gain exactly 1, and the branch corrections shrink like \(1/\sqrt l\): the gradient at initialization neither vanishes nor explodes exponentially (Xiong et al., 2020 prove gradient norms with respect to parameters are well-behaved, scaling roughly as \(1/\sqrt L\) relative to Post-LN). That is why Pre-LN can be trained without warm-up (though warm-up still helps at large LR).</p>
+<p>The price: since the stream grows while each branch's output is O(1), <i>deeper layers change the stream by a smaller relative amount</i> (relative contribution \(\sim1/l\)); late layers become partly redundant ("representation collapse", Liu et al. 2020; also observed by pruning studies). A <b>final norm before the head is mandatory</b> because the stream's scale is arbitrary.</p>
+<h4>Post-norm</h4>
+<p>If \(x_l\) has unit variance and \(F_l(x_l)\) variance \(a^2\) (uncorrelated), then \(\mathrm{Var}(x_l+F_l)=1+a^2\) and the norm divides by \(\sqrt{1+a^2}\). The Jacobian's identity part is therefore scaled by \(1/\sqrt{1+a^2}\) at <i>every</i> layer: the skip-path gain through \(L\) layers is
+$$\prod_{l=1}^L\frac1{\sqrt{1+a^2}}=(1+a^2)^{-L/2},$$
+e.g. \(2^{-L/2}\) for \(a=1\). The direct gradient highway of ResNets is destroyed; gradients must flow through the branches, which are initially random. Xiong et al. show, in addition, that gradients on parameters near the output are large at initialization (of order \(d\sqrt{\ln d}\), independent of \(L\)), so a large initial learning rate diverges: hence the <b>warm-up requirement</b>. On the other hand, Post-LN, when trained successfully, often reaches a slightly better quality, as each layer fully exploits the residual branch.</p>
+<h3>6.3 Fixes and hybrids</h3>
+<ul>
+<li><b>DeepNorm</b> (Wang et al., 2022): \(x_{l+1}=\mathrm{LN}(\alpha x_l+G_l(x_l))\) with \(\alpha&gt;1\) (e.g. \((2N)^{1/4}\) for an \(N\)-layer decoder-only model) and initialization of branch weights scaled down by \(\beta\). Combines Post-LN performance with Pre-LN stability; trained 1000-layer Transformers.</li>
+<li><b>Sandwich / Peri-LN</b> (norm before <i>and</i> after each sublayer; used in Gemma 2 and variants): the output norm bounds branch magnitudes, reducing the stream growth and loss spikes at high learning rates. OLMo 2 normalizes the sublayer outputs (<i>reordered norm</i>) combined with QK-norm.</li>
+<li><b>NormFormer</b>: extra LNs after attention heads and inside the FFN.</li>
+<li><b>ReZero / SkipInit / Fixup</b>: no norm; branch scaled by a learned scalar initialized at 0.</li>
+</ul>
+<h3>6.4 Attention-specific stability: QK-Norm</h3>
+<p>Attention logits are \(\ell_{ij}=q_i^\top k_j/\sqrt{d_k}\). Without a norm on \(q,k\), their norms can grow unboundedly (they are outputs of unconstrained linear maps), pushing the softmax toward one-hot (entropy collapse) and creating loss spikes at large learning rates and scale. <b>QK-norm</b> (Henry et al. 2020; Dehghani et al., ViT-22B) applies LN/RMSNorm to \(q\) and \(k\) per head, optionally with a learned temperature: \(\ell_{ij}=\tau\,\hat q_i^\top\hat k_j\), where \(\|\hat q\|=\|\hat k\|=\sqrt{d_k}\) (up to affine), so \(|\ell_{ij}|\le\tau d_k\). Related stabilizers: z-loss on the output logits (\(10^{-4}(\log Z)^2\)), and bounded-output-norm rules.</p>
+<h3>6.5 Conditioning: AdaLN</h3>
+<p>For conditioning on a signal \(c\) (diffusion timestep, class, text): replace the affine with \(y=\gamma(c)\odot\hat x+\beta(c)\) where \((\gamma,\beta)=\mathrm{MLP}(c)\). In DiT, the <b>adaLN-Zero</b> block is \(x\leftarrow x+\alpha(c)\,F\big(\gamma(c)\,\mathrm{LN}(x)+\beta(c)\big)\) with the MLP's final layer zero-initialized, so \(\alpha=0\) and every block starts as the identity. Concretely: conditioning enters through modulation of normalized statistics instead of through extra tokens or cross-attention.</p>
+<div class="box"><b>Summary of Chapter 6.</b> Post-norm = strong per-layer re-normalization, weak gradient highway, needs warm-up and careful init. Pre-norm = clean highway, stream grows, needs final norm, may under-use late layers. Modern recipe: pre-RMSNorm + final norm + QK-norm (+ optional post-sublayer norm), no biases, weight decay excluded from norm gains.</div>
+<h2 id="c7">7. Other techniques</h2>
+<h3>7.1 Weight-space normalizations</h3>
+<ul>
+<li><b>Weight Normalization</b> (Salimans &amp; Kingma, 2016): reparameterize \(w=\dfrac{g}{\|v\|}v\) with scalar \(g\) and vector \(v\). Gradient: \(\nabla_gL=\dfrac{\nabla_wL\cdot v}{\|v\|}\), \(\nabla_vL=\dfrac g{\|v\|}M_v\nabla_wL\), \(M_v=I-\dfrac{vv^\top}{\|v\|^2}\). So the direction update is orthogonal to \(v\) (same scale-invariance dynamics as BN, but no activation statistics, no batch dependence). Cheap; used in RL, generative audio models, and WaveNet-like systems; needs careful data-dependent initialization.</li>
+<li><b>Spectral Normalization</b> (Miyato et al., 2018): \(\bar W=W/\sigma_{\max}(W)\), with \(\sigma_{\max}\) estimated by one step of power iteration per training step: \(u\leftarrow\dfrac{Wv}{\|Wv\|},\ v\leftarrow\dfrac{W^\top u}{\|W^\top u\|},\ \sigma\approx u^\top Wv\). Makes each layer 1-Lipschitz, bounding the discriminator's Lipschitz constant; standard in GAN discriminators.</li>
+<li><b>Weight Standardization</b> (Qiao et al., 2019): \(\hat W_{c,:}=(W_{c,:}-\mu_{W_c})/\sigma_{W_c}\) per output filter. Smooths the loss similarly to BN without activation statistics; best paired with GN.</li>
+</ul>
+<h3>7.2 BN repairs</h3>
+<ul>
+<li><b>Batch Renormalization</b> (Ioffe, 2017): \(\hat x=\dfrac{x-\mu_B}{\sigma_B}\,r+d\), with \(r=\mathrm{clip}\big(\tfrac{\sigma_B}{\sigma^{run}}\big)\), \(d=\mathrm{clip}\big(\tfrac{\mu_B-\mu^{run}}{\sigma^{run}}\big)\), treated as constants for backprop. Makes training-time outputs match inference-time outputs, with clipping ranges annealed from (1,0) outward.</li>
+<li><b>Filter Response Normalization</b> (Singh &amp; Krishnan, 2019): \(\nu^2=\tfrac1{HW}\sum_{h,w}x^2\), \(\hat x=x/\sqrt{\nu^2+\epsilon}\), output \(\max(\gamma\hat x+\beta,\tau)\) (TLU, learned threshold \(\tau\)). Batch-independent; no mean subtraction, so TLU replaces ReLU to compensate for the lost centering.</li>
+<li><b>Switchable Norm</b> (Luo et al., 2018): learned softmax mix of BN/LN/IN statistics.</li>
+</ul>
+<h3>7.3 Normalization-free training</h3>
+<p>Instead of normalizing activations, control signal propagation by design: <b>Fixup</b> (rescale residual branch inits by \(L^{-1/(2m-2)}\), add scalar biases/multipliers), <b>SkipInit/ReZero</b> (\(x+\alpha F(x)\), \(\alpha_0=0\)), <b>NF-ResNets</b> (scaled weight standardization, variance-aware residual scaling \(x_{l+1}=x_l+\alpha F(x_l/\beta_l)\)) with <b>adaptive gradient clipping</b> (clip when \(\|\nabla W\|/\|W\|\) too large); NFNets matched or beat EfficientNet at large batch without any norm layer. <b>Dynamic Tanh</b> (Zhu et al., 2025): \(y=\gamma\odot\tanh(\alpha x)+\beta\), \(\alpha\) a learned scalar; motivated by the observation that LN's input–output map in deep Transformers looks like a tanh-shaped squashing. Reported to match LN in many Transformer settings (vision, language, diffusion). Recent, so verify follow-up results before relying on it.</p>
+<h3>7.4 Normalization on graphs</h3>
+<p>Graph batches have different sizes/topology: BN over nodes of a mini-batch of graphs is common but node-feature offsets carry graph-level information, so <b>GraphNorm</b> (Cai et al., 2021) subtracts a learnable fraction of the graph mean; <b>PairNorm</b> keeps the pairwise distance between node embeddings constant to counter over-smoothing.</p>
+<h3>7.5 Comparison of invariances</h3>
+<div class="sc"><table>
+<tr><th></th><th>Weight scale</th><th>Input offset</th><th>Input scale</th><th>Batch independent</th><th>Foldable at inference</th></tr>
+<tr><td>BN</td><td>yes</td><td>yes (per channel)</td><td>yes</td><td>no</td><td>yes</td></tr>
+<tr><td>LN</td><td>yes</td><td>yes (per token)</td><td>yes</td><td>yes</td><td>no</td></tr>
+<tr><td>RMSNorm</td><td>yes</td><td>no</td><td>yes</td><td>yes</td><td>no</td></tr>
+<tr><td>GN / IN</td><td>yes</td><td>yes</td><td>yes</td><td>yes</td><td>no</td></tr>
+<tr><td>WeightNorm</td><td>by construction</td><td>no</td><td>no</td><td>yes</td><td>yes</td></tr>
+<tr><td>SpectralNorm</td><td>yes (Lipschitz)</td><td>no</td><td>no</td><td>yes</td><td>yes</td></tr>
+</table></div>
+
+<h2 id="c8">8. Practical engineering</h2>
+<h3>8.1 Where the norm sits relative to its neighbors: what happens before and after</h3>
+<h4>CNNs</h4>
+<ul>
+<li><b>Before BN</b>: conv output (no bias needed). Scale and offset are irrelevant after the norm. Dropout, if used, should come after the BNs.</li>
+<li><b>After BN</b>: the activation. With \(\hat x\sim\) standardized, ReLU passes ~50% of units; sigmoid/tanh stay out of saturation. A learned \(\gamma&lt;1\) pushes towards the linear regime, \(\beta\) shifts the activation threshold (so "conv-BN-ReLU" vs "conv-ReLU-BN" differ; both are used, conv-BN-ReLU is standard).</li>
+<li><b>Pre-activation ResNet</b> (BN→ReLU→conv): the skip path carries un-normalized sums, which makes optimization smoother and generalization slightly better in deep nets.</li>
+<li><b>Zero-init \(\gamma\)</b> of the last norm in each residual branch makes each block start as identity (Goyal et al.).</li>
+</ul>
+<h4>Transformers</h4>
+<ul>
+<li><b>Before the norm</b>: the residual stream (Pre-LN) or the sum of stream and branch (Post-LN).</li>
+<li><b>After the norm</b>: the linear projections \(W_{q,k,v}\) (attention) or \(W_1\) (FFN / gated-FFN). The norm output has fixed RMS \(\approx\) 1 per token, so the scale of attention logits and FFN pre-activations is controlled by \(\|W\|\) and \(\gamma\) alone. Initialization of \(W\) therefore sets the scale of the first logits.</li>
+<li>The final norm precedes the unembedding; its gain \(\gamma\) acts as an output temperature (tied embeddings: remember the interplay).</li>
+</ul>
+<h3>8.2 Optimizers and weight decay</h3>
+<ul>
+<li>For scale-invariant weights, weight decay controls the effective step (§2.5); with AdamW, decay is decoupled from the adaptive step, so the equilibrium angular update still depends on \(\eta\lambda\) but also on the second-moment normalization. Re-tune \(\lambda\) when switching norms.</li>
+<li><b>Exclude</b> \(\gamma\), \(\beta\), biases (and typically embeddings) from weight decay; their scale <i>is</i> meaningful.</li>
+<li>Adam's \(\epsilon\) (1e-8 default) interacts with the very small gradients of normalized layers in low precision; use 1e-6 or so in bf16/fp16 training of large models if you see instabilities.</li>
+<li>LARS/LAMB-type layer-wise scaling relates to the same \(\|W\|\)-dependent effective step.</li>
+</ul>
+<h3>8.3 Numerical precision</h3>
+<ul>
+<li>Compute statistics in fp32 even for fp16/bf16 activations (sum of squares of values around 100 overflows fp16 range 65504 quickly).</li>
+<li>\(\epsilon\) inside the square root: \(\sqrt{\sigma^2+\epsilon}\), not \(\sqrt{\sigma^2}+\epsilon\); choose \(\epsilon\) consistent with the activation scale and dtype (1e-5/1e-6).</li>
+<li>For one-pass variance, use Welford or the two-pass formula; \(\mathbb E[x^2]-\mathbb E[x]^2\) suffers catastrophic cancellation when \(|\mu|\gg\sigma\).</li>
+</ul>
+<h3>8.4 Distributed training</h3>
+<ul>
+<li>BN statistics are per-device by default (per-GPU batch). Use SyncBN (all-reduce of \(\sum x\), \(\sum x^2\) per layer) when per-device batch is small; cost: latency per layer.</li>
+<li>LN/RMS/GN are local and communication-free; tensor parallelism splits \(d\), requiring an all-reduce of the two scalars (or one for RMS) per token, unless the norm is applied on a replicated stream (sequence-parallel schemes shard the tokens instead).</li>
+</ul>
+<h3>8.5 Inference and compression</h3>
+<ul>
+<li>BN: fold into the preceding conv (§2.3). LN/RMS: need runtime reduction; fuse with the adjacent elementwise ops, or with the residual add ("add + norm" fused kernels), in Triton/CUDA/torch.compile.</li>
+<li>Quantization: LLM activations after the norm have a few channels with very large magnitude (massive activations). Methods like SmoothQuant move scale between \(\gamma\) and the next layer's weights: \(\gamma'=\gamma/s\), \(W'=\mathrm{diag}(s)W\), which keeps the function and flattens activation outliers. Norm layers themselves are typically kept in higher precision.</li>
+<li>Streaming: use causal/cumulative statistics (cLN) or per-frame RMSNorm; avoid BN or freeze it.</li>
+</ul>
+<h3>8.6 Debugging checklist</h3>
+<ul>
+<li>Train/eval mode and BN running statistics (print <code>running_mean</code>, <code>running_var</code>, <code>num_batches_tracked</code>).</li>
+<li>Per-layer histograms of pre-norm and post-norm activations; norm of the residual stream by layer.</li>
+<li>Gradient norms per layer at step 0 (Post-LN: large near output; Pre-LN: roughly uniform).</li>
+<li>Attention entropy per head (collapse → add QK-norm).</li>
+<li>Learning-rate/weight-decay sweeps jointly, not separately.</li>
+</ul>
+
+<h2 id="c9">9. Architecture case studies and relevance</h2>
+<div class="sc"><table>
+<tr><th>Family</th><th>Normalization</th><th>Details / rationale</th></tr>
+<tr><td>ResNet, ResNeXt, DenseNet, MobileNet, EfficientNet</td><td>BN</td><td>Conv-BN-ReLU; zero-init last \(\gamma\); folding for deployment; SyncBN for detection backbones or FrozenBN when fine-tuning.</td></tr>
+<tr><td>Detection/segmentation (Mask R-CNN, UPerNet)</td><td>GN heads, FrozenBN/SyncBN backbone</td><td>Images are large → per-GPU batch of 1–2.</td></tr>
+<tr><td>ConvNeXt, Swin, ViT, DeiT, CLIP, SAM</td><td>LN (per token / channels-last), Pre-LN in ViT-like</td><td>Transformer-style blocks; large global batch but batch independence desired.</td></tr>
+<tr><td>BERT, original Transformer, T5-v1 (RMS-like)</td><td>Post-LN / RMS-style</td><td>Warm-up needed (Post-LN).</td></tr>
+<tr><td>GPT-2/3, OPT, BLOOM</td><td>Pre-LN</td><td>Final LN before head.</td></tr>
+<tr><td>Llama 1–3, Mistral, Qwen, DeepSeek, Gemma, Mamba</td><td>Pre-RMSNorm (+QK-norm in recent ones; sandwich in Gemma 2)</td><td>Bias-free, fp32 norm math.</td></tr>
+<tr><td>Diffusion U-Nets</td><td>GN(32) + SiLU, AdaGN/FiLM for timestep</td><td>Batch-free, conv-compatible.</td></tr>
+<tr><td>DiT / MMDiT</td><td>adaLN-Zero / modulation + QK-norm</td><td>Conditioning via normalization statistics.</td></tr>
+<tr><td>GANs</td><td>BN/IN/AdaIN (G); spectral norm (D); weight demodulation (StyleGAN2)</td><td>Lipschitz control for D; style control for G.</td></tr>
+<tr><td>Neural style transfer</td><td>IN, AdaIN</td><td>Removing instance contrast.</td></tr>
+<tr><td>Speech / audio</td><td>wav2vec 2.0: GroupNorm in the first conv layer (per-channel over time) of the feature encoder, LN in Transformer; Conformer: LN around modules, BN inside the conv module; Conv-TasNet: gLN/cLN; Whisper: LN (Pre-LN)</td><td>Variable-length audio, streaming constraints (causality ⇒ cLN, no BN).</td></tr>
+<tr><td>RNN / LSTM / GRU</td><td>LN per gate per time step</td><td>BN per time step is awkward.</td></tr>
+<tr><td>RL (policy/value nets)</td><td>LN or none; WeightNorm; BN problematic</td><td>Correlated, non-stationary batches.</td></tr>
+<tr><td>Contrastive/self-supervised (SimCLR, MoCo, BYOL)</td><td>BN in projector (SimCLR: global BN; MoCo: shuffle BN)</td><td>BN also acts as an implicit negative/centering signal in BYOL-like methods (debated; see Richemond 2020).</td></tr>
+<tr><td>Graph neural networks</td><td>BN/LN, GraphNorm, PairNorm</td><td>Graph-level statistic handling; over-smoothing.</td></tr>
+</table></div>
+<h3>Relevance ranking (judgment)</h3>
+<ol>
+<li><b>RMSNorm</b>: de facto standard in LLMs and increasingly in other Transformers. Mandatory knowledge.</li>
+<li><b>LayerNorm</b>: baseline for every pre-2023 Transformer; ViTs, speech Transformers, many multimodal models still use it.</li>
+<li><b>BatchNorm</b>: central for CNN/vision and edge deployment; conceptually the origin of the field (running statistics, scale invariance, effective LR).</li>
+<li><b>GroupNorm</b>: core of generative image models and small-batch dense prediction.</li>
+<li><b>Conditional norms (AdaLN/FiLM/AdaGN) and QK-norm</b>: current research hot spots in diffusion Transformers and large-scale stability.</li>
+</ol>
+<h3>Decision guide</h3>
+<ol>
+<li>Sequence/Transformer model: pre-RMSNorm (or Pre-LN if matching an existing model) + final norm; add QK-norm for large LR or scale.</li>
+<li>Conv net with per-device batch \(\ge\sim16\), fixed-size inputs: BN (SyncBN if global batch large but local small).</li>
+<li>Small batch, dense prediction, generative: GN (G≈32), optionally with Weight Standardization.</li>
+<li>Style/contrast manipulation: IN/AdaIN.</li>
+<li>Conditioning signal: AdaLN/AdaGN/FiLM, zero-init the modulation gate.</li>
+<li>Streaming/causal: cumulative LN or per-frame RMSNorm; no BN.</li>
+<li>GAN discriminator: spectral norm; avoid BN.</li>
+</ol>
+<h2 id="c10">10. Implementation from scratch</h2>
+<p>Reference implementations (PyTorch). Verify each against the library layer and check the universal backward formula of §1.1 with autograd.</p>
+<pre><code>import torch
+
+def batch_norm(x, gamma, beta, eps=1e-5):          # x: (N,C,H,W)
+    mu  = x.mean(dim=(0, 2, 3), keepdim=True)
+    var = x.var(dim=(0, 2, 3), unbiased=False, keepdim=True)
+    xh  = (x - mu) / torch.sqrt(var + eps)
+    return gamma.view(1, -1, 1, 1) * xh + beta.view(1, -1, 1, 1)
+
+def layer_norm(x, gamma, beta, eps=1e-5):          # x: (..., d)
+    mu  = x.mean(-1, keepdim=True)
+    var = x.var(-1, unbiased=False, keepdim=True)
+    return gamma * (x - mu) / torch.sqrt(var + eps) + beta
+
+def rms_norm(x, g, eps=1e-6):                      # Llama-style: fp32 math
+    xf = x.float()
+    xf = xf * torch.rsqrt(xf.pow(2).mean(-1, keepdim=True) + eps)
+    return xf.to(x.dtype) * g
+
+def group_norm(x, G, gamma, beta, eps=1e-5):       # x: (N,C,H,W)
+    N, C, H, W = x.shape
+    xg  = x.reshape(N, G, -1)
+    mu  = xg.mean(-1, keepdim=True)
+    var = xg.var(-1, unbiased=False, keepdim=True)
+    xh  = ((xg - mu) / torch.sqrt(var + eps)).reshape(N, C, H, W)
+    return gamma.view(1, -1, 1, 1) * xh + beta.view(1, -1, 1, 1)</code></pre>
+<p><b>BatchNorm with running statistics</b> (the part people forget):</p>
+<pre><code>class MyBN2d(torch.nn.Module):
+    def __init__(self, C, eps=1e-5, momentum=0.1):
+        super().__init__()
+        self.gamma = torch.nn.Parameter(torch.ones(C))
+        self.beta  = torch.nn.Parameter(torch.zeros(C))
+        self.register_buffer("rm", torch.zeros(C))
+        self.register_buffer("rv", torch.ones(C))
+        self.eps, self.mom = eps, momentum
+
+    def forward(self, x):
+        if self.training:
+            mu  = x.mean((0, 2, 3))
+            var = x.var((0, 2, 3), unbiased=False)
+            m = x.numel() // x.shape[1]
+            with torch.no_grad():
+                self.rm.lerp_(mu, self.mom)
+                self.rv.lerp_(var * m / (m - 1), self.mom)
+        else:
+            mu, var = self.rm, self.rv
+        xh = (x - mu.view(1, -1, 1, 1)) / torch.sqrt(var.view(1, -1, 1, 1) + self.eps)
+        return self.gamma.view(1, -1, 1, 1) * xh + self.beta.view(1, -1, 1, 1)</code></pre>
+<p><b>Manual backward for any set normalization</b> (reduction over the last dimension of a reshaped tensor), to check §1.1:</p>
+<pre><code>def norm_backward(g, xh, sigma):
+    # g = dL/dxhat, xh = normalized input, sigma = sqrt(var + eps); reduce over last dim
+    return (g - g.mean(-1, keepdim=True) - xh * (g * xh).mean(-1, keepdim=True)) / sigma
+
+# gradient check against autograd (float64)
+x = torch.randn(4, 16, dtype=torch.double, requires_grad=True)
+mu, var = x.mean(-1, keepdim=True), x.var(-1, unbiased=False, keepdim=True)
+sigma = torch.sqrt(var + 1e-5)
+xh = (x - mu) / sigma
+g = torch.randn_like(xh)
+xh.backward(g)
+print(torch.allclose(x.grad, norm_backward(g, xh.detach(), sigma.detach())))</code></pre>
+<p>For RMSNorm drop the <code>g.mean</code> term and use the RMS in place of \(\sigma\). Also test BN folding: build <code>Conv2d(bias=True)</code> + <code>BatchNorm2d</code> in <code>eval()</code>, compute \(W'=sW,\ b'=\beta+s(b-\mu)\) and compare outputs with <code>torch.allclose</code>.</p>
+<h3>Pre-norm Transformer block (reference)</h3>
+<pre><code>class Block(torch.nn.Module):
+    def __init__(self, d, heads, norm=torch.nn.RMSNorm):   # torch.nn.RMSNorm exists in recent PyTorch
+        super().__init__()
+        self.n1, self.n2 = norm(d), norm(d)
+        self.attn = torch.nn.MultiheadAttention(d, heads, batch_first=True, bias=False)
+        self.ffn  = torch.nn.Sequential(torch.nn.Linear(d, 4*d, bias=False), torch.nn.GELU(),
+                                        torch.nn.Linear(4*d, d, bias=False))
+    def forward(self, x):
+        h = self.n1(x)
+        x = x + self.attn(h, h, h, need_weights=False)[0]
+        return x + self.ffn(self.n2(x))
+# Post-LN variant: x = n1(x + attn(x,x,x)); x = n2(x + ffn(x))
+# A final norm is applied after the last block, before the output head.</code></pre>
+
+<h2 id="c11">11. Exercises and research experiments</h2>
+<h3>Derivations</h3>
+<ol>
+<li>Derive the backward formula of §1.1 including \(\epsilon\) and show \(\sum_i(\partial L/\partial x_i)=0\) and \(\sum_i(\partial L/\partial x_i)\hat x_i=0\).</li>
+<li>Show that \(\sigma J\) is an orthogonal projector of rank \(m-2\) (\(\epsilon=0\)), and that for RMSNorm the projector has rank \(d-1\).</li>
+<li>Prove \(\langle\nabla f(w),w\rangle=0\) for scale-invariant \(f\); derive the SGD norm-growth law and the equilibrium angular update \(\sqrt{2\eta\lambda}\).</li>
+<li>For Post-LN with \(\mathrm{Var}(F)=a^2\), recompute the skip-path gain \((1+a^2)^{-L/2}\); what \(\alpha\) in \(\mathrm{LN}(\alpha x+F)\) restores gain \(\approx1\)? (Compare with DeepNorm.)</li>
+<li>Show that BN followed by a linear layer is equivalent to a linear layer with a changed bias at inference; derive the folded weights for BN → Conv → BN chains.</li>
+<li>Show \(\mathrm{RMSNorm}(x)=\mathrm{LN}(x)\) iff \(\mu=0\); quantify the error factor in terms of \(\mu/\sigma\).</li>
+</ol>
+<h3>Empirical</h3>
+<ol>
+<li><b>Batch-size sweep</b>: small CNN on CIFAR-10, BN vs GN vs LN for \(B\in\{2,4,8,32,128,512\}\); plot test accuracy, and the gap between train-mode and eval-mode accuracy for BN.</li>
+<li><b>Effective LR</b>: log \(\|W\|\) and the angular update per step for a BN net with \(\lambda\in\{0,5\!\times\!10^{-4}\}\); compare with \(\sqrt{2\eta\lambda}\).</li>
+<li><b>Pre vs Post</b>: 12–48 layer Transformer on a small LM task; Post-LN, Pre-LN, DeepNorm; with/without warm-up; log per-layer gradient norms at step 0 and the residual-stream norm by depth.</li>
+<li><b>LN vs RMSNorm vs DyT vs none</b> (+ QK-norm on/off) on a small LM at high LR; log loss spikes, attention entropy, activation outliers, throughput.</li>
+<li><b>Placement ablations</b> in a CNN: conv-BN-ReLU vs conv-ReLU-BN vs pre-activation; zero-init \(\gamma\) on/off.</li>
+<li><b>Audio-style streaming</b>: same model with gLN vs cLN vs RMSNorm per frame, evaluated causally; measure the train/inference gap.</li>
+<li><b>Statistics inspection</b>: histogram pre-/post-norm activations per layer, and the evolution of \(\gamma\) across training.</li>
+</ol>
+
+<h2 id="c12">12. Reading list</h2>
+<p class="mut">arXiv IDs are provided for quick lookup. I wrote them from memory: verify titles and versions on arxiv.org.</p>
+<h3>A. Core papers (read first)</h3>
+<ol>
+<li>Ioffe &amp; Szegedy, <i>Batch Normalization</i> (2015), arXiv:1502.03167</li>
+<li>Ba, Kiros, Hinton, <i>Layer Normalization</i> (2016), arXiv:1607.06450</li>
+<li>Ulyanov et al., <i>Instance Normalization: The Missing Ingredient for Fast Stylization</i> (2016), arXiv:1607.08022</li>
+<li>Salimans &amp; Kingma, <i>Weight Normalization</i> (2016), arXiv:1602.07868</li>
+<li>Wu &amp; He, <i>Group Normalization</i> (2018), arXiv:1803.08494</li>
+<li>Zhang &amp; Sennrich, <i>Root Mean Square Layer Normalization</i> (2019), arXiv:1910.07467</li>
+</ol>
+<h3>B. Theory: why normalization works</h3>
+<ol start="7">
+<li>Santurkar et al., <i>How Does Batch Normalization Help Optimization?</i> (2018), arXiv:1805.11604</li>
+<li>Bjorck et al., <i>Understanding Batch Normalization</i> (2018), arXiv:1806.02375</li>
+<li>Kohler et al., <i>Exponential convergence rates for BN: the interplay of BN and GD</i> (2018), arXiv:1805.10694</li>
+<li>Yang et al., <i>A Mean Field Theory of Batch Normalization</i> (2019), arXiv:1902.08129</li>
+<li>van Laarhoven, <i>L2 Regularization versus Batch and Weight Normalization</i> (2017), arXiv:1706.05350</li>
+<li>Li &amp; Arora, <i>An Exponential Learning Rate Schedule for Deep Learning</i> (2019), arXiv:1910.07454</li>
+<li>Wan et al., <i>Spherical Motion Dynamics</i> (2020), arXiv:2006.08419</li>
+<li>De &amp; Smith, <i>Batch Normalization Biases Residual Blocks Towards the Identity Function</i> (2020), arXiv:2002.10444</li>
+<li>Luo et al., <i>Towards Understanding Regularization in Batch Normalization</i> (2018), arXiv:1809.00846</li>
+<li>Li et al., <i>Understanding the Disharmony between Dropout and Batch Normalization</i> (2018), arXiv:1801.05134</li>
+<li>Xu et al., <i>Understanding and Improving Layer Normalization</i> (2019), arXiv:1911.07013</li>
+<li>Brody et al., <i>On the Expressivity Role of LayerNorm in Transformers' Attention</i> (2023), arXiv:2305.02582</li>
+</ol>
+<h3>C. Transformers: placement and stability</h3>
+<ol start="19">
+<li>Xiong et al., <i>On Layer Normalization in the Transformer Architecture</i> (2020), arXiv:2002.04745</li>
+<li>Liu et al., <i>Understanding the Difficulty of Training Transformers</i> (2020), arXiv:2004.08249</li>
+<li>Shen et al., <i>PowerNorm: Rethinking Batch Normalization in Transformers</i> (2020), arXiv:2003.07845</li>
+<li>Wang et al., <i>DeepNet: Scaling Transformers to 1,000 Layers</i> (2022), arXiv:2203.00555</li>
+<li>Henry et al., <i>Query-Key Normalization for Transformers</i> (2020), arXiv:2010.04245</li>
+<li>Dehghani et al., <i>Scaling Vision Transformers to 22 Billion Parameters</i> (2023), arXiv:2302.05442</li>
+<li>Wortsman et al., <i>Small-scale proxies for large-scale Transformer training instabilities</i> (2023), arXiv:2309.14322</li>
+<li>Sun et al., <i>Massive Activations in Large Language Models</i> (2024), arXiv:2402.17762</li>
+<li>Touvron et al., <i>LLaMA: Open and Efficient Foundation Language Models</i> (2023), arXiv:2302.13971</li>
+<li>Zhu et al., <i>Transformers without Normalization</i> (2025), arXiv:2503.10622</li>
+</ol>
+<h3>D. Conditioning, small batch, normalization-free</h3>
+<ol start="29">
+<li>Huang &amp; Belongie, <i>Arbitrary Style Transfer in Real-time with AdaIN</i> (2017), arXiv:1703.06868</li>
+<li>Perez et al., <i>FiLM: Visual Reasoning with a General Conditioning Layer</i> (2017), arXiv:1709.07871</li>
+<li>Peebles &amp; Xie, <i>Scalable Diffusion Models with Transformers</i> (2022), arXiv:2212.09748</li>
+<li>Ioffe, <i>Batch Renormalization</i> (2017), arXiv:1702.03275</li>
+<li>Wu &amp; Johnson, <i>Rethinking "Batch" in BatchNorm</i> (2021), arXiv:2105.07576</li>
+<li>Hoffer et al., <i>Train longer, generalize better</i> (ghost BN) (2017), arXiv:1705.08741</li>
+<li>Qiao et al., <i>Micro-Batch Training with Batch-Channel Normalization and Weight Standardization</i> (2019), arXiv:1903.10520</li>
+<li>Singh &amp; Krishnan, <i>Filter Response Normalization Layer</i> (2019), arXiv:1911.09737</li>
+<li>Miyato et al., <i>Spectral Normalization for GANs</i> (2018), arXiv:1802.05957</li>
+<li>Zhang et al., <i>Fixup Initialization</i> (2019), arXiv:1901.09321; Bachlechner et al., <i>ReZero</i> (2020), arXiv:2003.04887; Brock et al., <i>High-Performance Large-Scale Image Recognition Without Normalization</i> (2021), arXiv:2102.06171</li>
+<li>Goyal et al., <i>Accurate, Large Minibatch SGD</i> (2017), arXiv:1706.02677</li>
+<li>Luo et al., <i>Differentiable Learning-to-Normalize via Switchable Normalization</i> (2018), arXiv:1806.10779</li>
+<li>Cai et al., <i>GraphNorm</i> (2021), arXiv:2009.03294</li>
+</ol>
+<h3>E. Audio/speech</h3>
+<ol start="42">
+<li>Luo &amp; Mesgarani, <i>Conv-TasNet</i> (2018), arXiv:1809.07454</li>
+<li>Baevski et al., <i>wav2vec 2.0</i> (2020), arXiv:2006.11477</li>
+<li>Gulati et al., <i>Conformer</i> (2020), arXiv:2005.08100</li>
+</ol>
+<h3>F. Courses and code</h3>
+<ul>
+<li>Karpathy, <i>makemore Part 3: Activations, Gradients and BatchNorm</i>, and <i>Let's build GPT</i> (YouTube).</li>
+<li>Stanford CS231n notes: batch normalization backprop derivation.</li>
+<li>PyTorch source for <code>nn.BatchNorm2d</code>, <code>nn.LayerNorm</code>, <code>nn.GroupNorm</code>, <code>nn.RMSNorm</code>; Hugging Face <code>modeling_llama.py</code> (<code>LlamaRMSNorm</code>); <code>timm</code> layers (<code>norm.py</code>, <code>norm_act.py</code>).</li>
+</ul>
+<p class="mut">Suggested path: A (all) → B 7, 8, 10, 11 → C 19, 20, 24 → run empirical experiments 1–4 → pick a direction (conditional norms, streaming/audio norms, normalization-free) and read from D/E.</p>
+</main></body></html>

@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notes: A Comprehensive Survey on Knowledge Distillation (TMLR 2025)</title>
+<style>
+:root{--bg:#fbfbf9;--fg:#1d2127;--mute:#5c6573;--line:#dcdfe4;--card:#fff;--acc:#1f5fbf;--accbg:#e8f0fc;--warn:#fff4e0;--warnb:#d9941a;--code:#f1f3f6}
+@media (prefers-color-scheme:dark){:root{--bg:#14171b;--fg:#e6e8eb;--mute:#9aa3af;--line:#2d333b;--card:#1b1f24;--acc:#7db1ff;--accbg:#1c2a40;--warn:#2d2616;--warnb:#c08a20;--code:#242a31}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{display:flex;max-width:1280px;margin:0 auto}
+nav{position:sticky;top:0;align-self:flex-start;height:100vh;overflow:auto;width:300px;flex:none;padding:20px 14px;border-right:1px solid var(--line);font-size:14px}
+nav h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:0 0 8px}
+nav a{display:block;color:var(--fg);text-decoration:none;padding:3px 8px;border-radius:6px}
+nav a:hover{background:var(--accbg)}
+nav a.sub{padding-left:22px;color:var(--mute);font-size:13px}
+main{flex:1;min-width:0;padding:28px 36px 80px}
+h1{font-size:30px;line-height:1.2;margin:0 0 6px}
+h2{font-size:25px;margin:48px 0 10px;padding-top:14px;border-top:2px solid var(--line)}
+h3{font-size:19px;margin:30px 0 6px;color:var(--acc)}
+h4{font-size:16px;margin:20px 0 4px}
+p{margin:8px 0}
+ul,ol{margin:6px 0 10px;padding-left:24px}
+li{margin:3px 0}
+code,.eq{font-family:ui-monospace,Menlo,Consolas,monospace}
+code{background:var(--code);padding:1px 5px;border-radius:4px;font-size:.9em}
+.eq{display:block;background:var(--code);border-left:3px solid var(--acc);padding:10px 14px;margin:10px 0;border-radius:4px;overflow-x:auto;font-size:14.5px;white-space:pre}
+.sub-t{color:var(--mute);margin-bottom:18px}
+.box{background:var(--accbg);border-left:4px solid var(--acc);padding:10px 14px;border-radius:6px;margin:14px 0}
+.box.warn{background:var(--warn);border-left-color:var(--warnb)}
+.box b.t{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin-bottom:2px}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+th{background:var(--code);font-weight:600}
+.tag{display:inline-block;font-size:11.5px;padding:0 7px;border-radius:10px;background:var(--accbg);color:var(--acc);margin-right:4px;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:12px 0}
+.std{display:inline-block;font-size:11px;padding:0 7px;border-radius:10px;background:var(--warn);color:var(--warnb);font-weight:700;margin-left:6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.card b{display:block;margin-bottom:2px}
+@media (max-width:900px){nav{display:none}main{padding:18px 16px 60px}}
+@media print{nav{display:none}main{padding:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+<h2>Contents</h2>
+<a href="#overview">0. Big picture</a>
+<a href="#math">0.5 Math primer</a>
+<a href="#intro">1. Introduction &amp; motivation</a>
+<a href="#sources">2. Sources</a>
+<a class="sub" href="#logit">2.1 Logit-based</a>
+<a class="sub" href="#feature">2.2 Feature-based</a>
+<a class="sub" href="#similarity">2.3 Similarity-based</a>
+<a href="#schemes">3. Schemes</a>
+<a href="#algorithms">4. Algorithms</a>
+<a class="sub" href="#attention">4.1 Attention</a>
+<a class="sub" href="#adversarial">4.2 Adversarial</a>
+<a class="sub" href="#multiteacher">4.3 Multi-teacher</a>
+<a class="sub" href="#crossmodal">4.4 Cross-modal</a>
+<a class="sub" href="#graph">4.5 Graph</a>
+<a class="sub" href="#adaptive">4.6 Adaptive</a>
+<a class="sub" href="#contrastive">4.7 Contrastive</a>
+<a href="#modalities">5. Modalities</a>
+<a class="sub" href="#3d">5.1 3D</a>
+<a class="sub" href="#multiview">5.2 Multi-view</a>
+<a class="sub" href="#text">5.3 Text</a>
+<a class="sub" href="#speech">5.4 Speech</a>
+<a class="sub" href="#video">5.5 Video</a>
+<a href="#applications">6. Applications</a>
+<a class="sub" href="#llm">6.1 LLMs</a>
+<a class="sub" href="#fm">6.2 Foundation models / ViT</a>
+<a class="sub" href="#ssl">6.3 Self-supervised</a>
+<a class="sub" href="#diffusion">6.4 Diffusion</a>
+<a class="sub" href="#visual">6.5 Visual recognition</a>
+<a href="#performance">7. Performance comparison</a>
+<a href="#discussion">8. Discussion</a>
+<a class="sub" href="#select">8.2 Selection guide</a>
+<a class="sub" href="#challenges">8.5 Challenges</a>
+<a class="sub" href="#future">8.6 Future directions</a>
+<a href="#cheat">9. Cheat-sheet</a>
+</nav>
+
+<main>
+<h1>A Comprehensive Survey on Knowledge Distillation</h1>
+<div class="sub-t">Study notes · Mansourian, Ahmadi, Ghafouri, Babaei, Badali Golezani, Yasamani Ghamchi, Ramezanian, Taherian, Dinashi, Miri, Kasaei (Sharif University of Technology) · Transactions on Machine Learning Research, 09/2025 (arXiv 2503.12067v2) · Notes cover the main paper (pp. 1–49); the remainder of the PDF is the reference list.</div>
+
+<div class="box"><b class="t">How to read these notes</b>
+Section numbers mirror the paper, so you can map any note back to the PDF. <b>Equations:</b> those labelled (1)–(7) are the survey's own numbered equations. Blocks tagged <span class="std">standard form</span> are the original-paper formulations of the methods the survey describes only in words; I wrote them out so you can study the maths — they are not equations printed in the survey. Method names are given with the paper's citation (author, year) where useful. "Cheat-sheet" at the end (Section 9) is a quick-recall glossary. Where the paper's own tables were garbled in extraction (Tables 12–13 row/method alignment), I only quote numbers that are unambiguously tied to a method.</div>
+
+<!-- ======================= 0 ======================= -->
+<h2 id="overview">0. The big picture</h2>
+<p><b>What KD is.</b> A lightweight <em>student</em> is trained with extra supervision from a bigger <em>teacher</em>. Idea first proposed by Buciluǎ et al. (2006), popularised by Hinton (2015) as training the student on the teacher's output distribution (soft labels). Unlike pruning, quantization, or low-rank factorization, KD <b>does not modify the network's layers or parameters</b>; it changes only how the student is trained.</p>
+<p><b>The survey's organising axes (Figure 2).</b> Five lenses on the same field:</p>
+<div class="grid">
+<div class="card"><b>Sources (§2)</b>What knowledge is transferred: <span class="tag">Logit</span><span class="tag">Feature</span><span class="tag">Similarity</span></div>
+<div class="card"><b>Schemes (§3)</b>How teacher/student are trained: <span class="tag">Offline</span><span class="tag">Online</span><span class="tag">Self-distillation</span></div>
+<div class="card"><b>Algorithms (§4)</b>Mechanism used to transfer: attention, adversarial, multi-teacher, cross-modal, graph, <b>adaptive (new)</b>, <b>contrastive (new)</b></div>
+<div class="card"><b>Modalities (§5)</b>Data type: 3D (point clouds), multi-view, text, speech, video (images are the default)</div>
+<div class="card"><b>Applications (§6)</b>LLMs, foundation models &amp; transformers, self-supervised learning, diffusion models, visual recognition tasks</div>
+<div class="card"><b>Comparison (§7–8)</b>Numbers on CIFAR-100, ImageNet, PASCAL VOC, Cityscapes, LLM benchmarks; selection guide; challenges; future work</div>
+</div>
+<div class="box"><b class="t">Three "key questions" of KD (Intro)</b>(1) <b>What</b> knowledge to transfer, (2) <b>which algorithm</b> to use, (3) <b>how to design</b> student and teacher architectures.</div>
+
+
+<h2 id="math">0.5 Math primer: the KD objective in one place</h2>
+<p><b>Notation.</b> x = input, y = ground-truth label, K = number of classes, T / S = teacher / student, z_t, z_s = logits, F_t, F_s = intermediate features, τ = temperature, σ = softmax.</p>
+<h4>Temperature softmax and soft labels (survey Eq. 2)</h4>
+<div class="eq">p_i(z; τ) = exp(z_i / τ) / Σ_j exp(z_j / τ)
+τ = 1  → ordinary softmax;   τ → ∞ → uniform;   τ → 0 → one-hot (argmax)</div>
+<h4>Logit distillation loss (survey Eq. 3) and the usual full objective <span class="std">standard form</span></h4>
+<div class="eq">KL(p_t ‖ p_s)  =  Σ_i p_t,i · log( p_t,i / p_s,i )
+
+L_total  =  (1 − λ) · CE( y , p(z_s; 1) )   +   λ · τ² · KL( p(z_t; τ) ‖ p(z_s; τ) )
+           └── hard-label (task) term ──┘     └──── distillation term (Eq. 3) ────┘</div>
+<p>The survey's Eq. (3) is only the second (distillation) term. The τ² factor keeps gradient magnitudes comparable when τ changes, because:</p>
+<div class="eq">∂L_KD / ∂z_s,i  =  (1/τ) · ( p_s,i(τ) − p_t,i(τ) )
+for large τ and zero-mean logits:  ≈ 1/(K·τ²) · ( z_s,i − z_t,i )
+→ at high temperature KD ≈ directly regressing the student's logits onto the teacher's (logit matching)</div>
+<h4>Link to label smoothing (the survey notes KD "can be likened to label smoothing")</h4>
+<div class="eq">label smoothing target:  q_i = (1 − ε)·1[i = y] + ε / K     (uniform "teacher")
+KD target:               q_i = p_i(z_t; τ)                       (data-dependent "teacher")</div>
+<h4>General multi-source objective <span class="std">standard form</span></h4>
+<div class="eq">L  =  L_task  +  α · L_ld (Eq. 1/3)  +  β · L_fd (Eq. 4)  +  γ · L_SD (Eq. 5)
+Eq. 1:  L_ld(Z_T, Z_S) = ℓ_logit(Z_T, Z_S)
+Eq. 4:  L_fd = ℓ_feature( Φ_t(F_t), Φ_s(F_s) )
+Eq. 5:  L_SD = ℓ_similarity( φ(F_t^i, F_t^j), φ(F_s^i, F_s^j) )</div>
+<h4>Scheme-dependent optimisation <span class="std">standard form</span></h4>
+<div class="eq">Offline :  θ_T frozen;                  min_θS  L(θ_S ; θ_T)
+Online  :  both trained together;       min_{θS,θT}  L_S + L_T
+           (mutual learning)  L_S = CE(y,p_s) + KL(p_t ‖ p_s) ;   L_T = CE(y,p_t) + KL(p_s ‖ p_t)
+Self-distillation :  θ_T = θ_S from an earlier epoch / branch / EMA</div>
+<div class="box"><b class="t">Reading the survey's seven equations</b>
+(1) generic logit loss · (2) temperature softmax · (3) KL on soft labels · (4) generic feature loss with transforms Φ · (5) generic similarity loss with relation function φ · (6) adversarially robust distillation (ARD) · (7) contrastive distillation (InfoNCE-style). Everything else in the survey is a choice of ℓ, Φ, φ, which layers, which samples, and when.</div>
+<!-- ======================= 1 ======================= -->
+<h2 id="intro">1. Introduction &amp; motivation</h2>
+<ul>
+<li><b>Problem.</b> DNNs, transformers, VLMs and LLMs are heavily over-parameterized (Kaplan 2020; Fischer 2024; LLM weight matrices are shown to be low-rank, Hu 2021 / LoRA) and expensive in runtime and memory, which blocks edge-device deployment (mobile phones).</li>
+<li><b>Alternatives to KD:</b> efficient blocks (MobileNet, ShuffleNet, BiSeNet), pruning (remove unneeded layers/params), quantization, low-rank factorization.</li>
+<li><b>Other purposes of KD beyond compression:</b>
+  <ul><li><b>Knowledge transfer</b> from a source task to a target task with insufficient labels.</li>
+  <li><b>Data-free KD</b> when privacy is a concern: synthesize data so sensitive data need not be stored.</li></ul></li>
+<li><b>Why a new survey?</b> Prior surveys: Gou et al. 2021 (sources/algorithms/schemes; most prominent), Wang &amp; Yoon 2021 (vision teacher-student compression), Alkhulaifi 2021 (new size-vs-accuracy metric), Yang 2023c (by knowledge source), Hu 2023a (optimization objectives), Moslemi 2024 (update + brief VLM / limited-data discussion). Gaps the authors claim:
+  <ol><li>Recent <b>feature-based</b> methods (now dominating SOTA) are under-covered; <b>adaptive</b> and <b>contrastive</b> distillation barely discussed.</li>
+  <li>Foundation models and LLMs (as teachers/targets) are mostly ignored (e.g. Gou 2021).</li>
+  <li><b>3D inputs</b> (point clouds) are not reviewed at all.</li></ol></li>
+</ul>
+<h3>Table 1 (condensed): coverage vs. earlier surveys</h3>
+<div class="tw"><table>
+<tr><th>Survey</th><th>Sources</th><th>Algorithms</th><th>Modality</th><th>Applications</th></tr>
+<tr><td>Gou 2021</td><td>Logit, Feature, Similarity</td><td>Adversarial, Attention, Cross-modal, Data-free, Graph, Lifelong, Multi-teacher, NAS, Quantized</td><td>Image, Text, Speech, Video</td><td>Visual recognition</td></tr>
+<tr><td>Wang &amp; Yoon 2021</td><td>L, F, S</td><td>Adversarial, Cross-modal, Data-free, Few-shot, Graph, Incremental, Multi-teacher, RL</td><td>Image, Video</td><td>Visual recognition, SSL</td></tr>
+<tr><td>Hu 2023a</td><td>L, F, S, Mutual information</td><td>Cross-modal, Federated, Graph, Multi-teacher</td><td>Image, Text, Speech, Video</td><td>Visual recognition, ranking, generation, regression</td></tr>
+<tr><td>Moslemi 2024</td><td>L, F, S</td><td>Adversarial, Attention, Cross-modal, Data-free, Graph, Lifelong, Multi-teacher, NAS, Quantized</td><td>Image, Text</td><td>VLMs, medical image</td></tr>
+<tr><td><b>This paper</b></td><td>L, F, S</td><td><b>Adaptive, Contrastive</b>, Adversarial, Attention, Cross-modal, Graph, Multi-teacher</td><td><b>3D/multi-view</b>, Image, Text, Speech, Video</td><td>Visual recognition, <b>foundation models, transformers, LLMs, diffusion, SSL</b></td></tr>
+</table></div>
+<h3>Stated contributions</h3>
+<ol>
+<li>Comprehensive survey across sources, algorithms, schemes, modalities, applications.</li>
+<li>Reclassification of sources with special attention to feature distillation.</li>
+<li>Introduces <b>adaptive</b> and <b>contrastive</b> distillation as algorithm categories (contrastive grows in importance with CLIP-style models).</li>
+<li>Reviews <b>multi-view and 3D</b> distillation.</li>
+<li>Applications: SSL, foundation models, transformers, diffusion, LLMs.</li>
+<li>Comparison of prominent methods + challenges + future directions.</li>
+</ol>
+
+<!-- ======================= 2 ======================= -->
+<h2 id="sources">2. Sources of distillation</h2>
+<p>Three categories (Fig. 3): <b>logits</b> (last-layer output), <b>features</b> (intermediate activations / neurons / feature maps), <b>similarities</b> (relationships among channels, instances, classes, regions). Tables 2 and 3 in the paper summarize them.</p>
+
+<h3 id="logit">2.1 Logit-based distillation</h3>
+<p>Student mimics the teacher's final predictions, which carry "dark knowledge" (Hinton). What "logits" mean depends on task: class scores (classification), predicted coordinates (detection), heatmaps (pose estimation).</p>
+<div class="eq">L_ld(Z_T, Z_S) = ℓ_logit(Z_T, Z_S)                         (1)
+p(Z_i, τ)      = exp(Z_i/τ) / Σ_i exp(Z_i/τ)                 (2)  softmax with temperature τ
+L_ld           = KL( p(Z_t, τ) , p(Z_s, τ) )                 (3)</div>
+<p>τ controls softening: higher τ → flatter distribution exposing inter-class similarity. First KD papers: Hinton 2015; Ba &amp; Caruana 2014.</p>
+<h4>Families of recent logit methods (Table 2)</h4>
+<div class="tw"><table>
+<tr><th>Sub-category</th><th>Idea</th><th>Methods &amp; what they do</th></tr>
+<tr><td><b>Logit normalization</b></td><td>Standardize logits before distillation</td><td><b>SphericalKD</b> (Guo 2020a): confidence magnitude isn't necessary; reduces teacher–student gap. <b>NormKD</b> (Chi 2023): constant τ can't suit all samples → per-sample temperature from the logit distribution. Miles &amp; Mikolajczyk 2024 (role of projectors), <b>TTM</b> (Zheng &amp; Yang 2024; role of temperature). Sun et al. 2024a: <b>logit standardization</b> — temperature = weighted std of logits, plug-and-play Z-score pre-process.</td></tr>
+<tr><td><b>Logit softening</b></td><td>Smooth logits (add noise / simplify)</td><td>Sau &amp; Balasubramanian 2016 (perturb logits with noise), Li 2023a, <b>SFKD</b> (Yuan 2024b; softens logits + "learning simplifier" using an attention module).</td></tr>
+<tr><td><b>Decoupling</b></td><td>Split the loss into separate terms</td><td><b>DKD</b>-style (Zhao 2022a), Li 2024a (NTCE), Ding 2024: separate <i>target-class</i> and <i>non-target-class</i> distillation. <b>SDD</b> (Wei 2024b): multi-scale logit reshaping. <b>BPKD</b> (Liu 2024d): different weights for object edges vs. bodies. <b>DKL</b> (Cui 2024): decouples KL into weighted MSE + a cross-entropy with soft labels.</td></tr>
+<tr><td><b>Revisiting logit KD</b></td><td>Reduce teacher–student gap</td><td>TAKD (teaching assistant), VanillaKD (Hao 2023), EffDstl (Song 2023b), Xu 2023d, BDCKD (Lu 2025).</td></tr>
+</table></div>
+
+<h4>Math behind the logit families <span class="std">standard form</span></h4>
+<div class="eq">Decoupled KD (DKD; Zhao 2022a)  —  split KL into target-class and non-target-class parts
+  b = [p_target, 1 − p_target]            (binary target / non-target probability)
+  p̂ = non-target probabilities renormalised to sum to 1
+  KL(p_t ‖ p_s)  =  KL(b_t ‖ b_s)   +   (1 − p_t,target) · KL(p̂_t ‖ p̂_s)
+                    └── TCKD ──┘        └──────────── NCKD ─────────────┘
+  L_DKD = α · TCKD + β · NCKD           (NCKD is suppressed in vanilla KD by the factor (1 − p_t,target)
+                                         when the teacher is confident → decoupling lets β be set freely)
+
+Logit standardisation (Sun 2024a)  —  Z-score before softmax, temperature = std
+  Z(z) = ( z − mean(z) ) / std(z)
+  L = τ² · KL( σ(Z(z_t)/τ) ‖ σ(Z(z_s)/τ) )      (removes the need for teacher/student logit ranges to match)
+
+NormKD (Chi 2023)  —  sample-wise temperature
+  τ_x = f( statistics of the sample's logit distribution )    instead of one constant τ
+
+Spherical KD (Guo 2020a)  —  match direction only
+  L = ℓ( z_t/‖z_t‖ , z_s/‖z_s‖ )                 (confidence magnitude is discarded)</div>
+<p><b>Why "decoupling" matters (survey §2.1):</b> methods by Zhao 2022a, Li 2024a, Ding 2024 separate the target-class and non-target-class distributions; Cui 2024 (DKL) re-writes KL into a weighted MSE plus a cross-entropy that carries the soft labels; Wei 2024b (SDD) distils logits at multiple spatial scales; Liu 2024d (BPKD) weights edge vs. body pixels differently for segmentation.</p>
+<p><b>Table 2 (similarity half), exactly as the survey groups them:</b></p>
+<div class="tw"><table>
+<tr><th>Sub-category</th><th>Description</th><th>Methods</th></tr>
+<tr><td>Instance-level similarity</td><td>Pairwise similarity between data samples</td><td>MTKD (You 2017), RKD (Park 2019), SPKD (Tung &amp; Mori 2019), IRG-KD (Liu 2019f), Chen 2020b, CSKD (Chen 2020f), Wang 2024g, Cheng 2024a, GIRKD (Hu 2024b)</td></tr>
+<tr><td>Feature/channel-level</td><td>Pairwise similarity between features / channels</td><td>Yim 2017 (FSP), ICKD (Liu 2021c), CCD (Wang 2023d)</td></tr>
+<tr><td>Class-level</td><td>Pairwise similarity between classes</td><td>CSKD (Chen 2020f), DSD (Feng 2021), DistKD (Huang 2022a), IDD (Zhang 2022d), AICSD (Mansourian 2025), Dist+ (Huang 2025a), IKD (Wang 2025a)</td></tr>
+<tr><td>Others</td><td>Regions / pixels / neighbours / views</td><td>SKD (Liu 2019d), CIRKD (Yang 2022c), PRRD (Wang 2023b), BCKD (Wang 2023k), NRKD (Xin 2024), CRLD (Zhang 2024g)</td></tr>
+</table></div>
+<p><b>Logit-method groups in Table 2 (the "revisiting" row):</b> TAKD, VanillaKD (Hao 2023), EffDstl (Song 2023b), Xu 2023d, BDCKD (Lu 2025). <b>Normalisation row:</b> KD, SphericalKD, NormKD, Miles &amp; Mikolajczyk 2024, TTM, Sun 2024a. <b>Softening row:</b> Sau &amp; Balasubramanian 2016, Li 2023a, SFKD. <b>Decoupling row:</b> DKL, BPKD, SDD, Ding 2024, NTCE (Li 2024a).</p>
+<div class="box"><b class="t">Take-aways (paper's summary)</b>
+Logit KD is simple and acts like <b>label smoothing / regularization</b> (Kim &amp; Kim 2017; Müller 2019), preventing overfitting. <b>Limits:</b> depends on predefined classes → only supervised learning; gives no insight into the teacher's intermediate layers; hard to learn from only final outputs when architectures differ → motivates feature and similarity distillation.</div>
+
+<h3 id="feature">2.2 Feature-based distillation</h3>
+<p>Intermediate representations give "step-by-step" information leading to the prediction; especially valuable when the model output is a representation (not logits). First: <b>FitNet / hints</b> (Romero 2014) — match intermediate features.</p>
+<div class="eq">L_fd = ℓ_feature( Φ_t(F_t), Φ_s(F_s) )                        (4)
+Φ = transformation that matches spatial size / channel count; ℓ_feature = similarity function</div>
+<h4>Chronology of ideas</h4>
+<ul>
+<li><b>Basic matching/statistics:</b> <b>AT</b> (Zagoruyko &amp; Komodakis 2016): attention transfer — aggregate channels into attention maps, L2 between them. <b>NST</b> (Huang &amp; Wang 2017): match neuron-selectivity distributions with Maximum Mean Discrepancy (MMD). <b>AB</b> (Heo 2019b): transfer activation boundaries of hidden neurons. <b>FT</b> (Kim 2018): transfer "factors" via a paraphraser auto-encoder. <b>Heo 2019a (OFD)</b>: "overhaul" — distill <i>pre-activation</i> features (margin ReLU, partial L2). <b>CWD</b> (Shu 2021): channel-wise distillation — softmax over channels, match distributions via KL.</li>
+<li><b>Cross-layer:</b> <b>SimKD</b> (Chen 2022a): reuses teacher classifier. <b>Knowledge Review</b> (Chen 2021d): each student layer matches the corresponding teacher layer <i>and all previous ones</i>. <b>SemCKD</b> (Chen 2021a): every student feature matches <i>all</i> teacher features with learned weights (FitNet = special case with weight 1 for the matched pair).</li>
+<li><b>Focus on the transformation Φ:</b> Heo 2019b auto-encoder; <b>MGD</b> (Yang 2022f): randomly mask student feature pixels, then 2 conv layers must regenerate teacher features; <b>MLP</b> (Liu 2023c): masking is unnecessary — a simple MLP projector suffices; <b>DiffKD</b> (Huang 2023b): train a diffusion model on teacher features and use it to denoise student features (student = noisy teacher); <b>AttnFD</b> (Mansourian 2024): CBAM channel+spatial attention applied to both teacher and student features, then MSE on refined features.</li>
+<li><b>Other recent:</b> <b>LAD</b> (Liu 2024g): FitNet loss decomposed into magnitude + angular terms. <b>FAKD</b> (Yuan 2024a): match teacher features to <i>augmented</i> student features. <b>FreeKD</b> (Zhang 2024i): frequency-domain distillation. Liu 2023a (Norm): N-to-one matching. Passban 2021: fuse all teacher features (matching layer-to-layer causes some teacher layers to be ignored).</li>
+</ul>
+<h4>Table 3: feature-method summary (teacher/student transforms, knowledge type, loss)</h4>
+<div class="tw"><table>
+<tr><th>Method</th><th>Teacher transform</th><th>Student transform</th><th>Knowledge</th><th>Loss</th></tr>
+<tr><td>FitNet</td><td>–</td><td>1×1 conv</td><td>feature representation</td><td>L2</td></tr>
+<tr><td>AT</td><td>channel aggregation</td><td>channel aggregation</td><td>attention map</td><td>L2</td></tr>
+<tr><td>NST</td><td>–</td><td>1×1 conv</td><td>neuron selectivity pattern</td><td>MMD</td></tr>
+<tr><td>Jacobian (Srinivas &amp; Fleuret 2018)</td><td>gradient</td><td>gradient</td><td>Jacobian of feature</td><td>L2</td></tr>
+<tr><td>FT</td><td>auto-encoder</td><td>auto-encoder</td><td>paraphraser</td><td>L1</td></tr>
+<tr><td>AB</td><td>binarization</td><td>1×1 conv</td><td>activation boundary</td><td>marginal L2</td></tr>
+<tr><td>Heo 2019a</td><td>margin ReLU</td><td>1×1 conv</td><td>pre-ReLU feature</td><td>partial L2</td></tr>
+<tr><td>He 2019</td><td>auto-encoder</td><td>3×3 conv</td><td>adapted feature</td><td>L1/L2</td></tr>
+<tr><td>FN (Xu 2020b)</td><td>L2 norm</td><td>L2 norm</td><td>feature representation</td><td>CE</td></tr>
+<tr><td>CWD</td><td>softmax</td><td>softmax</td><td>activation map</td><td>KL</td></tr>
+<tr><td>MGD</td><td>–</td><td>masking + conv</td><td>feature representation</td><td>L2</td></tr>
+<tr><td>MLP</td><td>–</td><td>MLP</td><td>feature representation</td><td>L2</td></tr>
+<tr><td>DiffKD</td><td>–</td><td>diffusion process</td><td>denoised feature</td><td>KL/L2</td></tr>
+<tr><td>FAKD</td><td>–</td><td>feature augmentation</td><td>activation boundary</td><td>KL</td></tr>
+<tr><td>LAD</td><td>–</td><td>1×1 conv</td><td>angular info of feature</td><td>L2</td></tr>
+<tr><td>AttnFD</td><td>channel/spatial attention</td><td>channel/spatial attention</td><td>refined feature</td><td>L2</td></tr>
+</table></div>
+
+<h4>Math of the main feature-distillation losses <span class="std">standard form</span></h4>
+<div class="eq">FitNet (hint + regressor r):         L = ‖ F_t − r(F_s) ‖²₂                                   r = 1×1 conv / linear
+
+Attention Transfer (AT):               Q(F) = Σ_c |F_c|^p          (sum over channels → H×W map)
+                                       L_AT = Σ_j ‖ Q_s^j/‖Q_s^j‖₂ − Q_t^j/‖Q_t^j‖₂ ‖_p
+
+Neuron Selectivity Transfer (NST):     L = MMD²(F_t, F_s) = ‖ (1/N) Σ_i φ(f_t^i) − (1/M) Σ_j φ(f_s^j) ‖²
+                                       (matches the distribution of neuron activation patterns; φ = kernel feature map)
+
+Channel-wise distillation (CWD):       φ(y_c)_i = exp(y_c,i / T) / Σ_i exp(y_c,i / T)          (spatial softmax per channel c)
+                                       L = (T² / C) · Σ_c KL( φ(y^T_c) ‖ φ(y^S_c) )
+
+Overhaul (OFD, Heo 2019a):             teacher pre-ReLU feature through margin ReLU σ_m(x) = max(x, m),  m = E[x | x &lt; 0]
+                                       partial L2:  d_p(T,S) = Σ_i  0                if S_i ≤ T_i  and  T_i ≤ 0
+                                                                     (T_i − S_i)²   otherwise
+
+Masked generative (MGD):               M_{i,j} ~ Bernoulli(1−λ)  (random pixel mask)
+                                       L = Σ ‖ F_t − G( M ⊙ F_s ) ‖²₂           (G = two conv layers regenerating the teacher map)
+
+Knowledge Review:                      L = Σ_i D( U( fuse( F_s^i … F_s^n ) ) , F_t^i )         (student layer i is matched to the
+                                                                                             teacher's layer i using the fused deeper-to-shallower student features)
+
+SemCKD (all-to-all, learned weights):  L = Σ_{i,j} α_{i,j} · ‖ F_t^j − r_j(F_s^i) ‖²       (FitNet = α_{i,j} = 1 for the matched pair, 0 else)
+
+AttnFD (CBAM):                         L = ‖ CBAM(F_t) − CBAM(F_s) ‖²₂           (channel attention then spatial attention, then MSE)
+
+LAD (magnitude + angle):               L = ‖ ‖F_t‖ − ‖F_s‖ ‖  +  (1 − cos∠(F_t, F_s))        (decomposition of the FitNet L2 loss)
+
+DiffKD (denoising):                    treat F_s ≈ F_t + noise;   a diffusion model trained on F_t outputs F̂_s = Denoise(F_s)
+                                       L = ℓ( F̂_s , F_t )   (+ KL on the logits obtained from the denoised feature)</div>
+<p><b>Further feature-method details from the survey:</b> Kim 2018 (FT) uses an auto-encoder "paraphraser" so the student's translator can mimic teacher "factors"; Heo 2019b (AB) binarises activations so only the <i>activation boundary</i> (sign pattern) is transferred; Srinivas &amp; Fleuret 2018 match the Jacobian of the feature w.r.t. the input; Xu 2020b (FN) L2-normalises both features and uses cross-entropy; He 2019 (adapted feature) uses an auto-encoder on the teacher and a 3×3 conv on the student; Yuan 2024a (FAKD) transfers the activation boundary with KL after augmenting student features; Liu 2023a ("Norm") performs N-to-one teacher-to-student layer matching; Passban 2021 argues one-to-one matching ignores some teacher layers and fuses <i>all</i> teacher features instead.</p>
+<p><b>Sensitivity issue (survey):</b> feature KD results depend on (i) which layers are used, (ii) how teacher/student layers are aligned, and (iii) the transformation function, so comparing methods across papers is not straightforward.</p>
+<div class="box"><b class="t">Take-aways</b>
+Feature KD is more generalizable (richer knowledge) and <b>most SOTA methods are feature-based</b>. Hard parts: choosing which layers, aligning teacher/student layers, matching sizes — especially across <b>different architectures</b> (capacity gap → performance drop). Methods are sensitive to layer choice, alignment and transformation, so cross-method comparison is hard.</div>
+
+<h3 id="similarity">2.3 Similarity-based distillation</h3>
+<p>Transfers <b>structural / relational</b> knowledge — pairwise similarities between features or instances — rather than exact values.</p>
+<div class="eq">L_SD = ℓ_similarity( φ(F_t^i, F_t^j) , φ(F_s^i, F_s^j) )              (5)
+i, j = two layers or two samples; φ computes the similarity; ℓ compares teacher vs. student similarity</div>
+<ul>
+<li><b>Pioneers:</b> <b>FSP</b> (Yim 2017) — "Flow of Solution Procedure": inner product between features of two layers in the teacher; squared L2 to student's. You 2017 (MTKD): relative dissimilarity between examples. Xie 2018: 8-neighbourhood similarity of logits. Zhang &amp; Peng 2018: similarity among multiple teachers.</li>
+<li><b>Instance/sample-level:</b> <b>RKD</b> (Park 2019): distance- and angle-wise relations between samples. <b>SPKD</b> (Tung &amp; Mori 2019): batch correlation via feature inner products. <b>IRG</b> (Liu 2019f): instance relationship graph. <b>CIRKD</b> (Yang 2022c): extends to <i>global</i> relations with a <b>memory bank</b>, pixel-to-pixel and pixel-to-region. Hu 2024b (GIRKD): stored features → fuller instance relations.</li>
+<li><b>Feature/channel-level:</b> <b>IFVD</b> (Wang 2020d): class prototypes; distill pixel-to-prototype distances. <b>ICKD</b> (Liu 2021c): channel correlation matrix (feature map × its transpose). Wang 2023d (CCD): minimize distance between channel-correlation maps.</li>
+<li><b>Class-level:</b> <b>DIST / DistKD</b> (Huang 2022a; 2025a): inter- and intra-class similarity. Feng 2021 (DSD): pairwise class similarity (logits × reshaped logits). Zhang 2022d (IDD): position info + inter-class distances for segmentation. <b>AICSD</b> (Mansourian 2025): intra-class distribution per class, pairwise KL between them (segmentation). IKD (Wang 2025a): knowledge sharing within a class.</li>
+<li><b>Spatial:</b> SKD (Liu 2019d): pool features into 9 regions; Wang 2023b multi-scale pixel-region; Wang 2023k (BCKD) adjacent-block correlations; Wang 2023a patch-level; Zhang 2024g (CRLD) logit similarity from local and global views.</li>
+</ul>
+
+
+<h4>Math of the main similarity losses <span class="std">standard form</span></h4>
+<div class="eq">FSP (Yim 2017) — flow matrix between two layers (inner product over spatial positions)
+   G_{ij}(x) = (1 / (h·w)) · Σ_{s=1..h} Σ_{t=1..w}  F¹_{i,s,t} · F²_{j,s,t}
+   L = Σ_layer-pairs  λ_k · ‖ G^T_k − G^S_k ‖²₂
+
+RKD (Park 2019) — distance-wise and angle-wise relations over samples
+   ψ_D(t_i, t_j) = ‖t_i − t_j‖₂ / μ                       (μ = mean pairwise distance, for scale invariance)
+   ψ_A(t_i, t_j, t_k) = cos∠(t_i, t_j, t_k) = ⟨ e_ij , e_kj ⟩,   e_ij = (t_i − t_j)/‖t_i − t_j‖
+   L_RKD = Σ ℓ_δ( ψ(t…), ψ(s…) )          (ℓ_δ = Huber loss)
+
+SPKD (Tung &amp; Mori 2019) — batch similarity matrix
+   G = Q · Qᵀ  (Q ∈ R^{b×chw}, one row per sample);   G̃ = row-wise L2-normalised G
+   L = (1 / b²) · ‖ G̃_T − G̃_S ‖²_F
+
+ICKD (Liu 2021c) — inter-channel correlation
+   A = F · Fᵀ ∈ R^{C×C}  (F reshaped to C × HW)         L = ‖ A_T − A_S ‖²_F  (student A uses a projected feature)
+
+DIST (Huang 2022a) — correlation-based inter- and intra-class relations
+   d(u, v) = 1 − ρ(u, v),   ρ = Pearson correlation
+   L_inter = (1/B) Σ_b d( Y^s_{b,:} , Y^t_{b,:} )         (relations among classes, per sample)
+   L_intra = (1/C) Σ_c d( Y^s_{:,c} , Y^t_{:,c} )         (relations among samples, per class)
+
+CIRKD (Yang 2022c) — adds a memory bank M of past embeddings
+   relations computed between the current pixel/region embedding and all bank entries:
+   L = KL( softmax(sim(f_t, M)) ‖ softmax(sim(f_s, M)) )  (pixel-to-pixel and pixel-to-region)</div>
+<p><b>Additional similarity details from the survey:</b> Peng 2019 (CCKD) transfers correlation congruence; Xie 2018 distils the 8-neighbourhood similarity of logits (segmentation); Chen 2020b adds graph-style instance relations; Wang 2024g, Cheng 2024a and Hu 2024b extend instance-level relations (Hu 2024b stores features to reveal more complete instance relations); Wang 2020d (IFVD) builds a prototype per class and distils pixel-to-prototype distances; Zhang 2022d (IDD) adds position information; Mansourian 2025 (AICSD) builds an intra-class distribution per class and compares classes pairwise with KL; Wang 2025a (IKD) shares knowledge within a class for consistent predictions; Xin 2024 (NRKD) uses neighbour relations; Zhang 2024g (CRLD) uses local and global logit similarity; Wang 2023a distils patch-level similarity.</p>
+<!-- ======================= 3 ======================= -->
+<h2 id="schemes">3. Distillation schemes (Fig. 4)</h2>
+<div class="tw"><table>
+<tr><th>Scheme</th><th>Definition</th><th>When preferred</th><th>Pros / cons</th></tr>
+<tr><td><b>Offline</b> (§3.1)</td><td>Two stages: pretrain big teacher, then train student with teacher <b>frozen</b>. Introduced in Hinton 2015; majority of methods.</td><td>A large pretrained teacher is available; only option for API-only proprietary LLM teachers.</td><td>Simple, effective. Cons: memory/compute overhead of loading teacher; student bounded by teacher; teacher bias transfers (Guo 2020a; Huang 2022a). Mitigated by adaptive distillation (Cho &amp; Hariharan 2019; Shu 2021; Mansourian 2025).</td></tr>
+<tr><td><b>Online</b> (§3.2)</td><td>Single-stage; teacher and student trained <b>simultaneously</b> (Chen 2020a).</td><td>No pretrained model available.</td><td>Wang 2024a: a group of students acts as a virtual teacher.</td></tr>
+<tr><td><b>Self-distillation</b> (§3.3)</td><td>A special online case: teacher and student are the <b>same network</b>.</td><td>Unlabeled / self-supervised settings.</td><td>No large model needed.</td></tr>
+</table></div>
+<h4>Online methods</h4>
+<ul>
+<li>Early: Zhu 2018 and Guo 2020b — ensemble of multi-branch logits forms an on-the-fly teacher. Wu &amp; Gong 2021 — mean of previous predictions as auxiliary guide. Li 2021b — branches of varying depth; each Hourglass net mimics the final heatmap and the fused heatmap of all branches (pose). Yang 2023b — mutual contrastive learning.</li>
+<li>Recent: Rao 2023 (reduce sharpness/variance gap in logit space); Zhang 2023h (flatter loss minima for generalization/stability); Jacob 2023 (multi-task nets using single-task networks as teachers, adaptive feature distillation + online task weighting); Ypsilantis 2024 (multi-domain, one teacher per domain).</li>
+</ul>
+<h4>Self-distillation methods</h4>
+<ul>
+<li><b>Born-Again Networks</b> (Furlanello 2018): first train on labels; then a new identical model with a different random seed is trained under the former's guidance. Lan 2019: labels + features of the model-so-far. Kim 2021a: linear combo of hard targets and the <i>previous epoch's</i> predictions. Zhang 2019b: split the model into sections, transfer deeper → shallower. Zhang 2021c: multiple shallow classifiers at different depths learn from the deepest.</li>
+<li><b>Theory:</b> Mobahi 2020 — first theoretical analysis; Zhang &amp; Sabuncu 2020 — link between self-distillation and label smoothing.</li>
+<li><b>Recent flavours:</b> deeper layers → shallower (Liang 2024; Qin 2025); previous epochs as teacher (Liu 2024e; Li 2024i; Lin 2024b); iterative pruning to create a student (Chen 2024a; Zheng 2024b); MSKD for multi-label learning (Wang 2025c); graph + self-distillation (Wu 2024a; Zhang 2023b); data augmentation + deep contrastive learning + self-distillation on different views of one sample (Xiao 2023b).</li>
+</ul>
+
+
+<h4>Math for online / self-distillation <span class="std">standard form</span></h4>
+<div class="eq">Born-Again / generation-wise:        θ^(k+1) trained with  CE(y, p^(k+1)) + KL( p^(k) ‖ p^(k+1) ),   θ^(k+1) re-initialised
+Previous-epoch self-distillation:    L_e = (1 − α)·CE(y, p_e) + α·KL( p_{e−1} ‖ p_e )          (Kim 2021a: targets are a linear
+                                                                                              combination of hard labels and last-epoch predictions)
+Deep-to-shallow (Zhang 2019b/2021c): L = Σ_k [ CE(y, p^(k)) + α·KL( p^(K) ‖ p^(k) ) + β·‖F^(K) − F^(k)‖² ]   (K = deepest exit)
+Branch-ensemble online KD:           p_teacher = (1/B) Σ_b p^(b)  ;   each branch minimises  CE + KL( p_teacher ‖ p^(b) )
+EMA teacher (used by BYOL, MoCo, DINO):   θ_T ← m·θ_T + (1 − m)·θ_S ,   m ≈ 0.99–0.999</div>
+<p><b>Further scheme details from the survey.</b> <i>Offline:</i> disadvantages — the large teacher must be loaded (memory/compute), student capped by teacher, teacher biases pass to the student. For proprietary LLM teachers reachable only by API, offline is the <b>only</b> practical option. <i>Online:</i> Chen 2020a (single stage); Wang 2024a (a group of students as a virtual teacher); Guo 2020b and Zhu 2018 (ensemble of multi-branch logits as on-the-fly teacher); Wu &amp; Gong 2021 (mean of previous predictions); Li 2021b (varying branch depth, Hourglass networks mimic final and fused heatmaps); Yang 2023b (mutual contrastive learning; embeddings from the same or different networks used with an anchor); Rao 2023 (sharpness/variance gap in logit space); Zhang 2023h (flatter minima); Jacob 2023 and Ypsilantis 2024 (multi-task and multi-domain with multiple teachers). <i>Self:</i> Furlanello 2018 (new identical net from different seed), Lan 2019, Xu &amp; Liu 2019, Zhang 2019b, Mobahi 2020 (first theory), Zhang &amp; Sabuncu 2020 (link to label smoothing), Zhang 2021c, Kim 2021a, and the 2023–2025 variants listed in §3.3.</p>
+<!-- ======================= 4 ======================= -->
+<h2 id="algorithms">4. Distillation algorithms</h2>
+
+<h3 id="attention">4.1 Attention-based distillation</h3>
+<p>Attention reflects neuron selectivity; attention maps highlight crucial regions so the student mimics what matters.</p>
+<ul>
+<li><b>AT</b> (Zagoruyko &amp; Komodakis 2016): first; aggregate channels → minimize loss between attention maps.</li>
+<li>Feng 2021: residual attention maps from two layers. An 2022: self-attention module adaptively aggregating context. Yuan 2024b: self-attention to soften logits.</li>
+<li><b>CAM / Grad-CAM</b> based transfer of high-attention regions: Bavandpour &amp; Kasaei 2020; Cho &amp; Kang 2022; Guo 2023d (CAT-KD).</li>
+<li>Karine 2024: channel + position self-attention. Gou 2023: different attention types at different representation levels. Guo 2024b: student features as queries, teacher as keys/values; <b>sparse attention via random deactivation</b> re-weights each teacher–student feature distance to avoid <i>negative transfer</i>.</li>
+<li>Recent strong: DiffKD (diffusion denoising to emphasise important areas); <b>AttnFD</b> (CBAM; notably helps <b>small objects</b> in semantic segmentation).</li>
+</ul>
+
+<h3 id="adversarial">4.2 Adversarial distillation</h3>
+<p>Inspired by the GAN min-max game (Goodfellow 2014). Three uses:</p>
+<ol>
+<li><b>Generator synthesizes training data</b> (data-free KD).</li>
+<li><b>Discriminator</b> distinguishes teacher vs. student outputs → refined guidance.</li>
+<li><b>Adversarial training</b> to reduce teacher–student discrepancy on perturbed (harder) samples → robustness.</li>
+</ol>
+<h4>4.2.1 Adversarial data-free KD</h4>
+<p>Used when original data is unavailable (privacy, transmission, legal constraints; Fang 2019). Adversarial samples are synthesized to mimic or augment the dataset. Often the pretrained teacher and its internal statistics act as the <b>discriminator</b> guiding the generator (Chen 2019a; Choi 2020; Wang 2024o; Ye 2020; Zhao 2022b; Micaelli &amp; Storkey 2019). Others: Do 2022 — use an <b>EMA of the student</b> as a more reliable learning source under distribution shift; Patel 2023 — meta-learning that balances knowledge acquisition and retention; Zhou 2024d — self-adversarial strategies for robustness; Liao 2024 — imbalanced datasets (teacher trained on skewed classes) with class-aware strategies.</p>
+<h4>4.2.2 Discriminator in the loop</h4>
+<ul>
+<li>Discriminator aligns <b>logits</b> (Xu 2017; Liu 2019a; Ghorbani 2020; Croitoru 2024) or <b>intermediate features</b> (Liu 2020a; Wang 2020a; Chung 2020; Belagiannis 2018; etc.). Three-player frameworks (Wang 2018b; 2019).</li>
+<li><b>GAN compression</b>: distil heavy generators into efficient ones (Aguinaldo 2019; Wang 2020c; Li 2020a; Zhang 2022a).</li>
+<li><b>Diffusion models:</b> discriminators used to reduce inference steps (Sauer 2024; Liu 2024a; Kong 2024; Lin 2024c). Score-based: <b>adversarial score distillation</b> (Wei 2024a), <b>variational score distillation</b> (Wan 2024).</li>
+</ul>
+<h4>4.2.3 Adversarial robust KD</h4>
+<p>Plain KD gives no inherent robustness. <b>ARD</b> (Goldblum 2020) combines adversarial training with distillation: make the student's predictions on <i>perturbed</i> inputs match the teacher's predictions on <i>clean</i> inputs.</p>
+<div class="eq">min_θ  E_(X,y)~D [ α τ² · KL( S_θ^τ(X + δ_θ) , T^τ(X) )  +  (1−α) · ℓ( S_θ^t(X), y ) ]      (6)
+δ_θ = argmax_{‖δ‖_p<ε} ℓ( S_θ^t(X), y )     (the adversarial perturbation)</div>
+<ul>
+<li><b>Refining teacher reliability:</b> <b>RSLAD</b> (Zi 2021) replaces the classification loss in (6) with KL to robust soft labels from an adversarially trained teacher; <b>IAD</b> (Zhu 2021a) selective trust in teacher; <b>MTARD</b> (Zhao 2022e) two teachers (clean + adversarial).</li>
+<li><b>Alignment / adaptivity:</b> IGDM (Lee 2023a, gradient sync), AdaAD (Huang 2023a, adaptive perturbations), SmaraAD (Yin 2024b), IGKD-BML (Wang 2021b) — Spearman correlation, CAM, attention-guided.</li>
+<li><b>New training schemes:</b> DARWIN (Dong 2024b; intermediate adversarial samples + triplet loss), PeerAiD (Jung 2024; peer model trained alongside), DGAD (Park &amp; Min 2024; split data into standard/adversarial groups + consistency regularization), STARSHIP (Dong 2024a), TALD (Nguyen-Duc 2023; Teacher Adversarial Local Distribution via Stein Variational Gradient Descent).</li>
+</ul>
+
+
+<h4>Math for attention, adversarial and data-free distillation <span class="std">standard form</span></h4>
+<div class="eq">Attention with CAM / Grad-CAM:   M_c = Σ_k w_k^c · F_k   (CAM);   Grad-CAM weights w_k^c = mean_{ij}( ∂y^c / ∂F_k,ij )
+                                    L = ‖ norm(M_t) − norm(M_s) ‖
+
+Guo 2024b (student queries, teacher keys/values):   A = softmax( Q_s K_tᵀ / √d ) ,  sparse via random deactivation
+                                    each pair's feature distance is re-weighted by A → prevents negative transfer
+
+GAN-style discriminator in the loop:
+   min_S max_D   E_x[ log D( f_t(x) ) ]  +  E_x[ log( 1 − D( f_s(x) ) ) ]          (f = logits or feature; D tries to tell teacher from student)
+
+Data-free generator (adversarial):
+   max_G min_S   E_{z~N(0,I)}  ‖ T(G(z)) − S(G(z)) ‖₁      (G seeks samples where student and teacher disagree; S then closes the gap)
+   + teacher-statistics priors, e.g.  Σ_l ‖ μ_l(G(z)) − μ^BN_l ‖₂ + ‖ σ²_l(G(z)) − σ^BN_l ‖₂   (match BatchNorm stats)
+
+Student-EMA stabiliser (Do 2022):   θ̄_S ← m·θ̄_S + (1 − m)·θ_S ;   θ̄_S used as a more reliable teacher-side source under distribution shift
+
+ARD (survey Eq. 6) restated:
+   δ_θ = argmax_{‖δ‖_p &lt; ε}  ℓ( S_θ(X + δ), y )                      (inner maximisation → PGD perturbation)
+   min_θ  E[ α·τ²·KL( S^τ_θ(X + δ_θ) ‖ T^τ(X) ) + (1 − α)·ℓ( S_θ(X), y ) ]    (outer minimisation)
+
+RSLAD (Zi 2021):   min_θ  E[ (1 − α)·KL( S(x) ‖ T(x) ) + α·KL( S(x + δ) ‖ T(x) ) ] ,   δ = argmax KL( S(x + δ) ‖ T(x) )
+                   (cross-entropy on hard labels is replaced by KL to the robust teacher's soft labels)</div>
+<p><b>Survey details not repeated above.</b> The data-free adversarial literature listed in §4.2.1: Chen 2019a, Ye 2020, Fang 2019, Choi 2020, Liao 2024, Patel 2023, Wang 2024o, Do 2022, Zhao 2022b, Zhou 2024d, Liu 2018, Micaelli &amp; Storkey 2019, Zhang 2022b. Discriminator on logits: Xu 2017, Liu 2019a, Ghorbani 2020, Croitoru 2024; on features: Liu 2020a, Wang 2020a, Chung 2020, Wang 2020d, Zhang 2020b, Li 2020b, Liu 2019d, Shen 2019d, Belagiannis 2018, Wang 2018c. Three-player frameworks: Wang 2018b, 2019. GAN compression: Aguinaldo 2019, Wang 2020c, Li 2020a, Zhang 2022a. Diffusion step-reduction with discriminators: Sauer 2024, Liu 2024a, Kong 2024, Lin 2024c. Score-based: adversarial score distillation (Wei 2024a), variational score distillation (Wan 2024). Robustness refinements: IAD (Zhu 2021a), MTARD (Zhao 2022e, two teachers for clean and adversarial), IGDM (Lee 2023a), AdaAD (Huang 2023a), SmaraAD (Yin 2024b), IGKD-BML (Wang 2021b), DARWIN (Dong 2024b), PeerAiD (Jung 2024), DGAD (Park &amp; Min 2024), STARSHIP (Dong 2024a), TALD (Nguyen-Duc 2023).</p>
+<h3 id="multiteacher">4.3 Multi-teacher distillation</h3>
+<p>Student learns from several teachers → diverse knowledge, better generalization. Origin: Hinton 2015 (average teachers' logits as soft labels).</p>
+<ul>
+<li><b>Basic variants:</b> You 2017 — voting; Sau &amp; Balasubramanian 2016 — noise-perturbed logits treated as distinct teachers (regularizer); <b>TeKAP</b> (Hossain 2025) — synthetic multiple teachers by perturbing a single teacher; Fukuda 2017 — random teacher per step; Papernot 2016a — teachers on data subsets + voting; Iordache 2025 — teachers on distinct datasets; Furlanello 2018 — sequential: each step's student becomes the next teacher.</li>
+<li><b>Adaptive aggregation (capacity gap per teacher):</b> Lin 2024d (adaptive temperature + diverse aggregation); Cheng 2024b (separate vanilla KD loss; weights from <i>entropy</i> of each teacher's predictions); Wang &amp; Xu 2024 (data-relation knowledge for weights); Zhang 2023a (meta-network weights).</li>
+<li><b>Other aggregation:</b> Chen 2019b (one teacher for intricate features, another for general decision features); Park &amp; Kwak 2020, Asif 2020 (extra student branches); Cao 2023 (progressive).</li>
+<li><b>Knowledge Amalgamation (KA):</b> merge already-trained public networks (Shen 2019a/b; Vongkulbhisal 2019; Luo 2020; Amirkhani 2021; Xu 2022b; Zhang 2023c; Li 2024b — uncertainty suppression). Teachers may differ by dataset or task. Vongkulbhisal 2019: unified classifier from pre-trained classifiers + unlabeled generic data.</li>
+</ul>
+<div class="box"><b class="t">Challenges</b> effective aggregation, deciding each teacher's contribution, complexity/computational cost.</div>
+
+
+<h4>Math for multi-teacher aggregation <span class="std">standard form</span></h4>
+<div class="eq">Average (Hinton 2015):         p̄ = (1/K) Σ_k p^(k)(τ)                      L = KL( p̄ ‖ p_s )
+Weighted:                        p̄ = Σ_k w_k · p^(k)(τ) ,   Σ_k w_k = 1
+Entropy-adaptive (Cheng 2024b):  w_k = softmax_k( −H( p^(k) ) ) ,   H(p) = −Σ_i p_i log p_i     (confident teachers get more weight)
+Per-teacher losses:              L = Σ_k w_k · KL( p^(k) ‖ p_s )
+Voting (You 2017 / Papernot 2016a):  y_vote = argmax_c Σ_k 1[ argmax p^(k) = c ]
+Meta-weighting (Zhang 2023a):    w = g_φ( features, predictions of all teachers ) ,  φ trained by a meta-objective</div>
+<p><b>More detail:</b> TeKAP (Hossain 2025) perturbs the knowledge of one pretrained teacher to generate several synthetic teachers; Iordache 2025 distils teachers trained on different datasets; Li &amp; Bilen 2020, Wang 2023e, Shang 2023b, Lin 2024d, Wang &amp; Xu 2024, Li 2024e all address adaptive aggregation under teacher-student capacity gaps; Luo 2019 and Shen 2019a handle teachers trained on different <i>tasks</i>; Shen 2019b extracts task-specific knowledge from heterogeneous teachers sharing a sub-task then combines it; Xu 2022b, Zhang 2023c, Amirkhani 2021, Luo 2020 are further Knowledge Amalgamation methods.</p>
+<h3 id="crossmodal">4.4 Cross-modal distillation (CMKD)</h3>
+<p>Use a well-annotated (<i>teacher</i>/auxiliary) modality to improve a less-annotated (<i>student</i>/main) modality; the student works even when the auxiliary modality is <b>absent at inference</b>. Origin: Gupta 2016 (RGB → depth/optical flow).</p>
+<ul>
+<li>Early pattern: two parallel streams at training, a single stream at inference. Garcia 2018/2019: RGB+depth → RGB (hallucinate depth). Thoker &amp; Gall 2019: two students mimic each other. Wang 2021d (EvDistill): bidirectional events ↔ frames. Liu 2021g: 2D → 3D features.</li>
+<li><b>LiDAR/Radar → RGB:</b> Hong 2022b (CMKD), Zhou 2023b (UniDistill), Wang 2023p (DistillBEV), Klingner 2023 (X3KD); Zhao 2024b (CRKD; Radar instead of LiDAR); Zhang 2024c (Radocc; depth + semantic features instead of voxels). Zhang 2023i: shared thermal+RGB student with two heavier teachers. Lee 2023b: optical flow ↔ RGB, task-specific decomposition.</li>
+<li><b>Text ↔ image/audio-video:</b> Andonian 2022 (soft alignment); Wang 2024j (CM-MaskSD: text features guide masked image prediction); Sarkar &amp; Etemad 2024 (XKD: mask audio + video, reconstruct).</li>
+</ul>
+<h4>Table 4: train vs. inference modality</h4>
+<div class="tw"><table>
+<tr><th>Method</th><th>Train modality</th><th>Inference modality</th></tr>
+<tr><td>Gupta 2016</td><td>RGB</td><td>Depth / optical flow</td></tr>
+<tr><td>Garcia 2019</td><td>RGB + Depth</td><td>RGB</td></tr>
+<tr><td>EvDistill</td><td>RGB + Event</td><td>Event</td></tr>
+<tr><td>Hong 2022b; DistillBEV</td><td>RGB + LiDAR</td><td>RGB</td></tr>
+<tr><td>UniDistill</td><td>RGB + LiDAR</td><td>LiDAR</td></tr>
+<tr><td>Lee 2023b</td><td>RGB + optical flow</td><td>RGB</td></tr>
+<tr><td>Radocc</td><td>Multi-view + LiDAR</td><td>Multi-view</td></tr>
+<tr><td>CRKD</td><td>Multi-view + LiDAR</td><td>Multi-view + Radar</td></tr>
+<tr><td>Andonian 2022; CM-MaskSD</td><td>RGB + Text</td><td>RGB + Text</td></tr>
+<tr><td>XKD</td><td>Video</td><td>RGB</td></tr>
+</table></div>
+
+<h3 id="graph">4.5 Graph-based distillation</h3>
+<p>Graphs (nodes = features/instances; edges = dependencies) capture <b>higher-order</b>, local and global relations beyond pairwise similarity (Zhang &amp; Peng 2018; Chen 2020b; Park 2019; Tung &amp; Mori 2019; Peng 2019; Liu 2019f; Lee &amp; Song 2019; Passalis 2020; Zhou 2021a; etc.). Graphs can also <b>regulate knowledge flow</b> among multiple teachers (Luo 2018; Minami 2020).</p>
+<p><b>GNN distillation</b> (Tian 2023a) has two objectives:</p>
+<ol><li><b>Performance improvement</b> of the original model (Zhang 2020a; 2021e; Chen 2020e; Rezayi 2021; Guo 2022/2023c; Huo 2023; Zhu 2024b; Yu 2022a).</li>
+<li><b>Compression</b>: big GNN → compact GNN (Dong 2023c; Yang 2022b; He 2022; Deng &amp; Zhang 2021) or even an <b>MLP</b> (Yang 2021; Zhang 2021d; Zheng 2021; Tian 2022a) for real-time use.</li></ol>
+<p>Transferred information: logits, feature representations, and the <b>graph structure</b> (connectivity) itself.</p>
+
+
+<h4>Math for cross-modal and graph distillation <span class="std">standard form</span></h4>
+<div class="eq">Cross-modal (teacher stream sees aux modality x^a, student only main modality x^m at inference):
+   L = L_task( S(x^m), y )  +  λ · ‖ f_S(x^m) − f_T(x^a) ‖²          (hallucination / feature mimicry)
+   BEV alignment variant:  L = ‖ BEV_S(x^cam) ⊙ M_fg − BEV_T(x^LiDAR) ⊙ M_fg ‖²     (M_fg = foreground mask, e.g. BEV-LGKD)
+
+Graph-based relation transfer (nodes v_i = instance features, edges e_ij = relation weights)
+   e_ij = sim(f_i, f_j) ;   L_graph = Σ_{ij} ‖ e^T_ij − e^S_ij ‖²  (+ vertex term Σ_i ‖ f^T_i − f^S_i ‖²)
+
+GNN → MLP (compression):   student MLP predicts node labels from node features only:
+   L = Σ_{v ∈ V} KL( p_GNN(v) ‖ p_MLP(v) )                    (no message passing at inference → real-time)</div>
+<h3 id="adaptive">4.6 Adaptive distillation <span class="tag">new category</span></h3>
+<p>Dynamically adjust parts of the distillation process instead of a fixed set-up (Table 5). Four sub-types:</p>
+<div class="tw"><table>
+<tr><th>Type</th><th>Problem addressed</th><th>Methods</th></tr>
+<tr><td><b>Adaptive loss definition</b></td><td>Teacher may output wrong predictions that shouldn't be copied</td><td>Park &amp; Heo 2020: adaptive CE that replaces incorrect probability maps with ground-truth labels. Wang 2024g: calibrated mask blocks erroneous teacher representations. Ma 2024 (CAG-DAKD): integrates positive prediction distributions of two teachers based on correctness and CE magnitude. Dist+ (Huang 2025a).</td></tr>
+<tr><td><b>Adaptive loss scaling</b></td><td>Teacher influence should change over training</td><td>Cho &amp; Hariharan 2019 (reducing teacher influence can help; early stopping of KD); Zhou 2020 (distillation loss should diminish; student takes control at the end); AICSD (weight-decaying process merging similarity distillation with vanilla KD).</td></tr>
+<tr><td><b>Adaptive teacher pruning / gap reduction</b></td><td>Capacity gap</td><td><b>TAKD</b> (Mirzadeh 2020): teaching-assistant intermediate network; Passalis 2020: auxiliary teacher; Lee 2024 (PCD) channel pruning; Guo 2024a (AFMPM) feature pruning; <b>InDistill</b> (Sarridis 2025): filter pruning + curriculum learning, layers distilled easy → hard; ADG-KD (Li 2025b).</td></tr>
+<tr><td><b>Adaptive sample/region importance</b></td><td>Not all samples/regions/channels are equally informative</td><td>Tian 2022c (APD, context-specific info per sample); Sun 2024b (CS-KD, identifies confusing samples); Kim 2024c (Energy KD, temperature from sample energy); Huang 2022b (MasKD, adaptive mask weights); Gou 2024 (ground-truth masks for logit KD); Sun 2023b (HWD, channel divergences → weights); Kang 2024 (more weight on layers with larger discrepancy); <b>CALD</b> (Huang 2025b; meta-network for class-adaptive weights).</td></tr>
+</table></div>
+
+
+<h4>Math for adaptive distillation <span class="std">standard form</span></h4>
+<div class="eq">Time-varying loss weight (Cho &amp; Hariharan 2019 / Zhou 2020 / AICSD):
+   L(t) = λ(t)·L_KD + (1 − λ(t))·L_task ,   λ(t) decreasing (e.g. linear / exponential decay)     → student takes control at the end
+
+Teaching-assistant chain (TAKD):          T (large) → TA (medium) → S (small)     each hop has a smaller capacity gap
+
+Adaptive CE (Park &amp; Heo 2020):              p̃_t = p_t   if argmax p_t = y ;   p̃_t = one-hot(y)   otherwise           (wrong teacher outputs replaced by GT)
+
+Energy-based temperature (Kim 2024c):    E(x) = −τ·log Σ_i exp( z_i / τ ) ;     τ_x = g( E(x) )
+
+Sample / region / channel weighting:     L = Σ_{x,r} w_{x,r} · ℓ( F_t^{x,r}, F_s^{x,r} ) ,   w from masks (MasKD), channel divergence (HWD), confusion (CS-KD), class meta-net (CALD)
+Layer weighting (Kang 2024):             w_l ∝ discrepancy between teacher and student at layer l</div>
+<h3 id="contrastive">4.7 Contrastive distillation <span class="tag">new category</span></h3>
+<p>Contrastive learning pulls positives together and pushes negatives apart (Hadsell 2006). In KD: <b>anchor</b> = student embedding, <b>positive</b> = teacher embedding of the <i>same</i> input, <b>negatives</b> = unrelated embeddings (teacher, student, or input-data based; Fig. 6).</p>
+<div class="eq">L_contrastive = − log [ exp( sim(F_s^i, F_t^i)/τ ) / Σ_{j∈N} exp( sim(F_s^i, F_j)/τ ) ]        (7)</div>
+<ul>
+<li><b>CRD</b> (Tian 2019): pioneer — contrastive loss aligns teacher/student features. <b>WCoRD</b> (Chen 2021b): primal + dual Wasserstein distance (dual → global transfer via mutual information; primal → local alignment inside mini-batches).</li>
+<li>Dense/semantic segmentation: Fan 2023. Single-image super-resolution: Liu 2024b (distil statistics of intermediate teacher features). <b>CLIP distillation:</b> Chen 2024g (image-feature alignment + educational attention modules). Sentence embeddings: <b>DistilCSE</b> (Gao 2021). Medical imaging: <b>CRCKD</b> (Xing 2021; class-guided contrastive distillation + categorical relation preserving; class centroids + relational graphs; works on imbalanced data). Weakly supervised visual grounding: Wang 2021e (region–phrase contrastive matching with pseudo labels; no detector at inference). <b>CRCD</b> (Zhu 2021b): maximize mutual information between anchor-teacher and anchor-student relation distributions → relation contrastive loss. <b>CRD</b> (Zhu 2025): class-wise semantics via sample-wise similarity (intra-sample alignment) + structural semantics for inter-sample contrast.</li>
+<li>Gao 2021 and Fan 2023 also design new contrastive losses for noisy negatives and capacity mismatch.</li>
+</ul>
+
+
+<h4>Math for contrastive distillation <span class="std">standard form</span></h4>
+<div class="eq">Eq. (7) restated with explicit sets:
+   anchor a = F_s^i (student) ;  positive = F_t^i (teacher, same input i) ;  negatives j ∈ N (other samples)
+   L_contrastive = − log [ exp( sim(F_s^i, F_t^i)/τ ) / ( exp( sim(F_s^i, F_t^i)/τ ) + Σ_{j∈N} exp( sim(F_s^i, F_t^j)/τ ) ) ]
+
+CRD (Tian 2019) — maximise a lower bound on mutual information between teacher and student embeddings
+   h(t, s) = exp( g_T(t)ᵀ g_S(s) / τ ) / ( exp( g_T(t)ᵀ g_S(s) / τ ) + N/M )
+   L_CRD = − E_{q(T,S|C=1)}[ log h(T,S) ] − N · E_{q(T,S|C=0)}[ log( 1 − h(T,S) ) ]
+   I(T;S) ≥ log N + E[ log h(T,S) ] ... (the bound is tightened by a larger number of negatives N)
+
+WCoRD (Chen 2021b) — primal / dual Wasserstein
+   dual form (global): sup_{‖f‖_L ≤ 1}  E_{p(t,s)}[ f(t,s) ] − E_{p(t)p(s)}[ f(t,s) ]    (mutual-information-style, global knowledge)
+   primal form (local): W(P_t, P_s) = min_π Σ_{ij} π_ij · c(t_i, s_j)      (feature alignment inside a mini-batch)
+
+CRCD (Zhu 2021b):  contrastive loss on <i>relation</i> distributions: maximise I( anchor-teacher relation ; anchor-student relation )</div>
+<p><b>Role of positives/negatives (Fig. 6 of the survey):</b> embeddings of the student are the anchor set, teacher embeddings of the same input are the positive set, and the negative set (via a "negative set sampler") may consist of teacher embeddings, student embeddings or embeddings derived from input data. A "variation of contrastive loss" box then produces the loss. Application list in the survey: semantic segmentation (Fan 2023), super-resolution (Liu 2024b), CLIP (Chen 2024g), sentence embeddings (DistilCSE, Gao 2021), medical imaging (CRCKD, Xing 2021), weakly-supervised visual grounding (Wang 2021e), relation transfer (CRCD, Zhu 2021b), class-wise semantics (CRD, Zhu 2025).</p>
+<!-- ======================= 5 ======================= -->
+<h2 id="modalities">5. Modalities</h2>
+
+<h3 id="3d">5.1 3D input (point clouds, LiDAR, voxels)</h3>
+<p>Figure 7 / Table 6 organise tasks: detection, classification, segmentation, depth estimation, representation learning, domain adaptation, recognition, completion (shape / scene / depth), registration, other. Table 6 cross-tabulates each by logit/feature/similarity source.</p>
+<h4>5.1.1 3D object detection</h4>
+<p>Three families:</p>
+<ul>
+<li><b>LiDAR-based</b> (sparsity &amp; occlusion): <b>X-Ray Distillation</b> (Gambashidze 2024; teacher trained on object-complete frames from aggregated LiDAR scans → student handles sparse/occluded data); <b>RadarDistill</b> (Bang 2024; align radar and LiDAR features); <b>RDD</b> (Li 2023g; align representations + refine outputs); <b>PointDistiller</b> (Zhang 2023d; local geometry, dynamic graph conv, reweighted learning); <b>itKD</b> (Cho 2023; feature reduction + mutual refinement, coarse+fine geometry); <b>SRKD</b> (Huang 2024e; weather-induced domain gap — density/shape similarity); <b>LiDAR Distillation</b> (Wei 2022; high-beam teacher → low-beam student); Yang 2022d (pivotal-position logit KD + teacher-guided initialization via weight inheritance); <b>PVD</b> (Zhang &amp; Liu 2023; point-level + voxel-level knowledge).</li>
+<li><b>Camera-only</b> (no depth): <b>FD3D</b> (Zeng 2023; selective masked generative distillation + query-based focal distillation, perspective and BEV); <b>X3KD</b> (Klingner 2023; cross-task, cross-modal, cross-stage, LiDAR feature alignment + adversarial training).</li>
+<li><b>Cross-modal</b> (LiDAR → camera/radar): <b>CRKD</b> (LiDAR-camera teacher → camera-radar student in BEV); <b>DistillBEV</b> (region decomposition, adaptive scaling, spatial attention, multi-scale); <b>CMKD</b> (Hong 2022b; LiDAR → monocular, BEV features + teacher predictions); <b>UniDistill</b> (Zhou 2023b; universal framework supporting LiDAR→camera, camera→LiDAR, fusion→camera, fusion→LiDAR via shared BEV).</li>
+</ul>
+<h4>5.1.2 – 5.1.10 Other 3D tasks</h4>
+<div class="tw"><table>
+<tr><th>Task</th><th>Notable methods and ideas</th></tr>
+<tr><td>Shape classification</td><td><b>FAD</b> (Lee &amp; Wu 2023; combined logit + feature loss); <b>JGEKD</b> (Tian 2023b; joint graph entropy for non-i.i.d. point cloud data); Zheng 2024a (offline, negative-weight self-distillation); Zhou 2024a (self-distillation for incomplete clouds).</td></tr>
+<tr><td>Semantic segmentation</td><td><b>PVD</b> (Hou 2022; point-to-voxel — fine details + coarse structure); Qiu 2023 (multi-to-single: fuses multi-scan info for hard classes; feature + logit + instance-aware similarity); <b>PSD</b> (Zhang 2021f; perturbed branches + graph consistency, self-distillation, limited labels); <b>Seal</b> (Liu 2024h; distil from off-the-shelf 2D vision foundation models, self-supervised); <b>PartDistill</b> (Umam 2024; from a VLM to 3D segmentation net); Genova 2021; Liu 2021g; Yang 2023f (LGKD); Cen 2023 (CMDFusion); Jiang 2023a; Smaller3d.</td></tr>
+<tr><td>Domain adaptation (UDA)</td><td>Cardace 2023 (self-distillation + GNN pseudo-label refinement); Wu 2023e (cross-modal feature fusion); Li 2025a (SEN, self-ensembling, semi-supervised).</td></tr>
+<tr><td>Depth estimation</td><td><b>MVP-Net</b> (Chen 2024b; multi-view cross-modal for point cloud upsampling); <b>KD-MonoRec</b> (Xiao 2024; monocular RGB + point cloud optimization); <b>LiRCDepth</b> (Sun 2025; RGB + radar, lightweight).</td></tr>
+<tr><td>Representation learning</td><td>DCGLR (Fu 2022; 3D-only KD). Leverage 2D foundation/large 2D data: Liu 2021d (PPKT; contrastive 2D→3D), <b>SLidR</b> (Sautier 2022; superpixel-driven contrastive loss, image → LiDAR pre-training), Qi 2023 (RECON; single/cross-modal), Huang 2024c (Text4Point; text), Zhang 2023k (C2P; 4D point cloud sequences), HVDistill, Diff3F, I2P-MAE, LiDAR2Map.</td></tr>
+<tr><td>Recognition (place recognition)</td><td>PointMCD (multi-view), DistilVPR (Wang 2024h) — cross-modal.</td></tr>
+<tr><td>Completion</td><td><i>Shape:</i> <b>RaPD</b> (Fan 2022; first semi-supervised prior distillation), Lin 2024a, Zhou 2024b (hierarchical self-distillation). <i>Scene:</i> SCPNet (Xia 2023), HASSC, etc. <i>Depth:</i> Hwang 2021, MonDi, ADNet, Huang 2024a.</td></tr>
+<tr><td>Registration</td><td>Löwens 2024 (DiReg), Jiang 2024a.</td></tr>
+<tr><td>Other</td><td>Generation (DTC123, Yi 2024b), stylization (CSD, Decatur 2024), sampling (PCDNet, Huang 2022c), "accordance detection" (Van Vo 2024; uses all KD types).</td></tr>
+</table></div>
+
+
+<h4>Table 6 (reconstructed): 3D distillation methods by task and source</h4>
+<div class="tw"><table>
+<tr><th>Task</th><th>Feature-based</th><th>Similarity-based</th><th>Logit-based</th></tr>
+<tr><td>Object detection</td><td>FD3D, X3KD, X-Ray Distillation (Gambashidze 2024), PointDistiller, itKD, CRKD, DistillBEV, RDD, RadarDistill, SRKD</td><td>FD3D, X3KD, Gambashidze 2024, itKD, CRKD</td><td>X3KD, Gambashidze 2024, PointDistiller, CRKD, DistillBEV, RDD</td></tr>
+<tr><td>Classification</td><td>FAD, HSD (Zhou 2024a)</td><td>–</td><td>FAD, JGEKD (Zheng 2024a / Tian 2023b), PointViG-Distil</td></tr>
+<tr><td>Segmentation</td><td>Liu 2021g, Qiu 2023, CMDFusion, Jiang 2023a, Smaller3d, Seal</td><td>PVD (Hou 2022), Qiu 2023</td><td>Genova 2021, PSD, PVD, Qiu 2023, LGKD (Yang 2023f), Smaller3d, PartDistill</td></tr>
+<tr><td>Depth estimation</td><td>MVP-Net, LiRCDepth</td><td>LiRCDepth</td><td>MVP-Net, KD-MonoRec, LiRCDepth</td></tr>
+<tr><td>Representation learning</td><td>PPKT, Fu 2022, SLidR, PointCMT, RECON, MVNet, LiDAR2Map, C2P, HVDistill, Yao 2024, Text4Point, Diff3F</td><td>–</td><td>Yu 2022b, LiDAR2Map, I2P-MAE</td></tr>
+<tr><td>Domain adaptation</td><td>Cardace 2023, Wu 2023e, SEN</td><td>–</td><td>SEN</td></tr>
+<tr><td>Recognition</td><td>DistilVPR, PointMCD</td><td>–</td><td>–</td></tr>
+<tr><td>Completion</td><td>SCPNet, RaPD, Lin 2024a, VPNet, Huang 2024a</td><td>ADNet</td><td>Hwang 2021, MonDi, Zhou 2024b, Zhang 2024e, HASSC, Huang 2024a</td></tr>
+<tr><td>Registration</td><td>Jiang 2024a</td><td>–</td><td>DiReg</td></tr>
+<tr><td>Other 3D tasks</td><td>DTC123, CSD, Van Vo 2024</td><td>Van Vo 2024</td><td>PCDNet</td></tr>
+</table></div>
+<p><b>Why 3D needs special KD (survey):</b> point clouds are sparse, random (unordered, irregular) and of varying density, which limits "normal" distillation algorithms — hence point-level + voxel-level knowledge (PVD), local geometric graphs (PointDistiller), density/shape-similarity alignment (SRKD), and teacher-guided weight inheritance (Yang 2022d). Labels are also expensive, so 2D foundation models and large 2D datasets are used to pre-train 3D nets (Seal, SLidR, PPKT, PartDistill). Detection-type families: LiDAR-only, camera-only (single / multi), cross-modal; the BEV space is the common bridge.</p>
+<h3 id="multiview">5.2 Multi-view input</h3>
+<p>Multi-view learning gives more robust results but suffers from modality diversity and cross-modal transfer difficulties. Two main groups: 3D object detection and 3D shape recognition (+ individual tasks). Table 7 lists methods with teacher/student modalities.</p>
+<ul>
+<li><b>Detection:</b> <b>SimDistill</b> (Zhao 2024a; LiDAR-camera fusion teacher; student with identical architecture + geometry compensation module learns multi-modal features from multi-view images alone); <b>X3KD</b> (cross-task from instance-segmentation teacher avoids ambiguous error propagation; cross-modal feature distillation + adversarial training; cross-modal output distillation); <b>DistillBEV</b>; <b>BEV-LGKD</b> (Li 2022c; LiDAR → BEV, foreground masks, depth distillation, no LiDAR at inference); <b>BEVDistill</b> (Chen 2022b; unify image and LiDAR in BEV; adaptive transfer across non-homogeneous representations); <b>STXD</b> (Jang 2023; cross-correlation regularization to reduce redundancy, temporal similarity maps, response distillation); <b>FSD-BEV</b> (Jiang 2024e; foreground self-distillation, no pretrained teacher).</li>
+<li><b>3D shape recognition:</b> <b>PointMCD</b> (multi-view teacher → point encoder student); <b>GMViT</b> (Xu 2024b; group multi-view transformer large model that improves smaller memory-friendly students).</li>
+<li><b>Other tasks:</b> MTS-Net (Tian 2022b; multi-view classification with redefined roles); Acar 2023 (multi-camera teacher policy → single-camera student policy for vision RL robot manipulation); Zhang 2023e (spatio-temporal + BEV response distillation); <b>KD-MVS</b> (Ding 2022b; self-supervised multi-view stereo; teacher with photometric/featuremetric consistency); <b>MVKD</b> (Wang 2023c; multi-teacher segmentation with co-tuning + multi-view feature/output distillation losses); <b>MKDT</b> (Lin &amp; Tseng 2023; Swin-style hierarchical ViT for action recognition with incomplete views); <b>MT-MV-KDF</b> (Qiang 2024; multi-task multi-view ECG for myocardial infarction detection/localization).</li>
+</ul>
+
+
+<h4>Table 7 (reconstructed): multi-view distillation methods</h4>
+<div class="tw"><table>
+<tr><th>Method</th><th>Task</th><th>Teacher modality → Student modality</th><th>Short description</th></tr>
+<tr><td>KD-MVS (Ding 2022b)</td><td>Multi-view stereo depth reconstruction</td><td>Multi-view images → multi-view images</td><td>Self-supervised MVS distillation</td></tr>
+<tr><td>MTS-Net (Tian 2022b)</td><td>Multi-view image classification</td><td>Multi-view → multi-view images</td><td>Multi-view learning + distillation</td></tr>
+<tr><td>BEV-LGKD (Li 2022c)</td><td>Multi-view BEV 3D detection</td><td>LiDAR → multi-view RGB</td><td>LiDAR-guided, foreground masks, depth distillation</td></tr>
+<tr><td>BEVDistill (Chen 2022b)</td><td>Multi-view 3D detection</td><td>LiDAR → multi-view images</td><td>Cross-modal BEV distillation</td></tr>
+<tr><td>STXD (Jang 2023)</td><td>Multi-view 3D detection</td><td>LiDAR → multi-view images</td><td>Structural + temporal distillation, cross-correlation regularisation, response distillation</td></tr>
+<tr><td>PointMCD (Zhang 2023f)</td><td>3D shape recognition</td><td>Multi-view images → 3D point cloud</td><td>Multi-view cross-modal distillation</td></tr>
+<tr><td>Acar 2023</td><td>Vision-based robotic manipulation</td><td>Multi-view → single camera</td><td>Robust manipulation policy</td></tr>
+<tr><td>Zhang 2023e</td><td>Multi-view BEV detection</td><td>BEV → BEV (efficient)</td><td>Structured (spatio-temporal) distillation</td></tr>
+<tr><td>MVKD (Wang 2023c)</td><td>Semantic segmentation</td><td>Multi-view → single-view images</td><td>Co-tuning + feature/output distillation losses</td></tr>
+<tr><td>MKDT (Lin &amp; Tseng 2023)</td><td>Human action recognition</td><td>Multi-view → single-view videos</td><td>Hierarchical ViT for incomplete data</td></tr>
+<tr><td>X3KD (Klingner 2023)</td><td>Multi-camera 3D detection</td><td>LiDAR → multi-view images</td><td>Cross-modal, cross-task, cross-stage</td></tr>
+<tr><td>DistillBEV (Wang 2023p)</td><td>3D detection for driving</td><td>LiDAR → multi-view BEV</td><td>LiDAR-to-BEV distillation</td></tr>
+<tr><td>FSD-BEV (Jiang 2024e)</td><td>3D detection for driving</td><td>Self → self</td><td>Foreground self-distillation, single model</td></tr>
+<tr><td>SimDistill (Zhao 2024a)</td><td>Multi-modal 3D detection</td><td>LiDAR-camera fusion → multi-view images</td><td>Modality-gap compensation</td></tr>
+<tr><td>GMViT (Xu 2024b)</td><td>3D shape recognition</td><td>Multi-view → multi-view</td><td>Group multi-view transformer for efficient shape analysis</td></tr>
+<tr><td>MT-MV-KDF (Qiang 2024)</td><td>Myocardial infarction detection / localisation</td><td>Multi-view ECG → single-view ECG</td><td>Multi-task + multi-view, CNN + attention</td></tr>
+</table></div>
+<p><b>Additional points:</b> Cross-modal KD often suffers from feature-distribution mismatch — FSD-BEV (Jiang 2024e) removes the need for a pretrained teacher and complex strategies. MTS-Net redefines teacher/student roles, optimising view classification and knowledge transfer end-to-end (extension: MTSCNN). KD-MVS: a teacher trained with photometric and featuremetric consistency probabilistically transfers knowledge to a student, addressing scarce depth ground truth. MVKD: aggregates several view-specific teachers and keeps their knowledge consistent through <i>multi-view co-tuning</i>.</p>
+<h3 id="text">5.3 Text input</h3>
+<p>KD is key for NLP since SOTA models (BERT, GPT) are large. Task-wise:</p>
+<div class="tw"><table>
+<tr><th>Task</th><th>What KD does</th><th>Refs</th></tr>
+<tr><td>Neural machine translation</td><td>Distil teacher output → comparable quality, lower cost</td><td>Kim &amp; Rush 2016; Tan 2019; Wang 2021a; Liang 2022a; Jin 2024</td></tr>
+<tr><td>Question answering</td><td>Transfer answer predictions + intermediate reps (e.g. attention distributions)</td><td>Hu 2018; Izacard &amp; Grave 2020; Yang 2020; Liu 2021b; Yin 2024a</td></tr>
+<tr><td>Text generation</td><td>Mimic vocabulary distributions; Chen 2019c uses BERT contextual understanding; Haidar &amp; Rezagholizadeh 2019 combine distillation with GANs for fluency/diversity</td><td></td></tr>
+<tr><td>Event detection</td><td>Ren 2021 (high → low-resource languages); Yu 2021 (retain knowledge while adapting to new events); Liu 2019a (adversarial imitation)</td><td></td></tr>
+<tr><td>Document retrieval</td><td>Replicate relevance scores / interaction features</td><td>Shakeri 2019; Chen 2021c</td></tr>
+<tr><td>Text recognition</td><td>Visual + contextual features</td><td>Bhunia 2021; Wang &amp; Du 2021</td></tr>
+<tr><td>NER</td><td>Contextual understanding + classification</td><td>Liang 2021; Ge 2024</td></tr>
+<tr><td>Summarization</td><td>Replicate output sequences / probability distributions</td><td>Chen 2017; Liu 2020b; Nguyen &amp; Luu 2022</td></tr>
+<tr><td>NLU, sentiment, text classification</td><td>Mimic output probabilities and internal representations</td><td>Liu 2019c; Tang 2019; FitzGerald 2022; Lehečka 2020; Malki 2023; Xu &amp; Yang 2017; Li &amp; Li 2021</td></tr>
+</table></div>
+
+
+<h4>Math for sequence-level distillation (NMT, summarisation, generation) <span class="std">standard form</span></h4>
+<div class="eq">Word-level KD:     L = − Σ_t Σ_{v∈V} p_T( v | y_&lt;t, x ) · log p_S( v | y_&lt;t, x )           (student matches teacher's token distribution)
+Sequence-level KD (Kim &amp; Rush 2016):   L = − log p_S( ŷ | x ) ,   ŷ = beam-search output of the teacher       (train on teacher translations)
+Interpolated:     L = (1 − α)·L_NLL(y_true) + α·L_seq-KD</div>
+<p><b>Cross-task notes from the survey.</b> NMT/QA/summarisation/classification students are trained to reproduce the teacher's output probabilities and (for QA, NLU, text classification) also internal representations such as attention distributions. Event detection (Ren 2021, Yu 2021, Liu 2019a), document retrieval (replicating relevance scores and interaction features), text recognition (visual + contextual features), NER (Liang 2021; Ge 2024), summarisation (Chen 2017; Liu 2020b; Nguyen &amp; Luu 2022), NLU (Liu 2019c; Tang 2019; FitzGerald 2022), sentiment analysis (Lehečka 2020; Malki 2023).</p>
+<h3 id="speech">5.4 Speech input</h3>
+<p>Motivation: deep acoustic models are hard to run in real time on embedded devices. Tasks and the role of KD:</p>
+<ul>
+<li><b>ASR:</b> high-precision teacher → fast student; also domain adaptation (noisy acoustics, medical transcription) (Chebotar &amp; Waters 2016; Kurata &amp; Saon 2020; Yoon 2021/2022; Zhao 2022c; Kim 2023b; Zhang 2023j …).</li>
+<li><b>Speech enhancement</b> (denoising + compression): Watanabe 2017; Wu 2019; Kim &amp; Kim 2021; Shin 2023; Park 2024.</li>
+<li><b>Speaker recognition/verification:</b> lower complexity while preserving identity; robustness to adversarial attacks and cross-domain/multilingual variation (Mingote 2020/2023; Peng 2022; Liu 2022a; Jin 2023b; Truong 2024; Hoang 2024).</li>
+<li><b>Speech translation</b> (Liu 2019e; Gaido 2020; Inaguma 2021; Lei 2023); <b>TTS</b> (Oord 2018 — Parallel WaveNet; Xu 2020a; Li 2024f); <b>speech separation</b> (Chen 2018; Zhang 2021b; real-time cocktail-party on low-power devices).</li>
+<li><b>Spoken language ID/understanding</b> (low-resource languages from multilingual teachers); <b>deepfake/spoofing detection</b> (lightweight anti-spoofing; Liao 2022; Xue 2023; Ren 2023; Lu 2024; Wani &amp; Amerini 2025); <b>audio classification/tagging</b> (sound event detection on IoT/edge; Chang 2020; Yin 2021; Schmid 2023; Dinkel 2023); <b>spoken QA / conversational AI</b> (You 2020a/b, 2021a/b); <b>audio captioning &amp; retrieval</b> (Xu 2024c; Primus &amp; Widmer 2024).</li>
+</ul>
+
+
+<h4>Math for speech KD <span class="std">standard form</span></h4>
+<div class="eq">ASR (frame-level, teacher posteriors over senones / tokens):   L = Σ_frames KL( p_T(· | o_t) ‖ p_S(· | o_t) )
+Speech enhancement / separation (regression):                     L = ‖ f_T(noisy) − f_S(noisy) ‖₁   (student mimics the teacher's enhanced output or mask)
+Speaker verification (embedding level):                            L = 1 − cos( e_T, e_S )   or   ‖ e_T − e_S ‖²
+Parallel WaveNet / TTS (Oord 2018):                                 student minimises KL( p_S ‖ p_T ) with probability-density distillation</div>
+<h3 id="video">5.5 Video input</h3>
+<p>Uses: video action recognition (Liu 2019b; Wu &amp; Chiu 2020; Camarena 2024; Wang 2024c; Soufleri 2024), video classification, video object segmentation (<b>MobileVOS</b>, Miles 2023: pixel-wise representation distillation for mobile semi-supervised VOS, ensuring cross-frame consistency; <b>V2I-DETR</b>, Jiang 2024c: video teacher → image student for medical lesion detection with real-time speed), video instance segmentation (Kim 2024a: distil similarity from an <i>offline</i> teacher seeing the whole video to an <i>online</i> per-frame student), partially relevant video retrieval (Dong 2023a), trajectory forecasting (Monti 2022), masked video modeling representation learning (Li 2023e; Wang 2023l), video quality estimation (RankDVQA-mini; Feng 2024a), attention prediction (Fu 2020). Mullapudi 2019: online feature distillation on live video for low-cost segmentation. Cross-modal: video→image, video→text, text→video, audio→video, video→audio. Pan 2020: spatio-temporal graph + KD for video captioning, robust to spurious correlations.</p>
+<div class="tw"><table>
+<tr><th>Source (Table 8)</th><th>Methods</th></tr>
+<tr><td>Feature</td><td>Wang 2024c, Liu 2019b, V2I-DETR, MaskAgain</td></tr>
+<tr><td>Similarity</td><td>RSKD, Bhardwaj 2019, OOKD, DL-DKD</td></tr>
+<tr><td>Logit</td><td>Camarena 2024, Wu &amp; Chiu 2020, PKD, MobileVOS, V2I-DETR, DTO, MVD, RankDVQA-mini, VideoAdviser, Afouras 2020, Perez 2020</td></tr>
+</table></div>
+
+<!-- ======================= 6 ======================= -->
+<h2 id="applications">6. Applications</h2>
+
+<h3 id="llm">6.1 Distillation in large language models</h3>
+<p>Goal: compress LLMs into <b>Small Language Models (SLMs)</b>. Fig. 8 taxonomy:</p>
+<div class="grid">
+<div class="card"><b>White-box</b>Teacher logits and intermediate outputs accessible → student uses internal info (logits, hidden states, attention scores).<br>Subtypes: <i>BERT-based</i> and <i>decoder-based</i>.</div>
+<div class="card"><b>Black-box</b>Only teacher predictions available (closed-source GPT-4, Gemini).<br>Subtypes: <i>In-context learning (ICL)</i>, <i>Chain-of-thought (CoT)</i>, <i>Instruction following (IF)</i>.</div>
+</div>
+<h4>White-box: BERT-based</h4>
+<ul>
+<li><b>DistilBERT</b> (Sanh 2019): student initialized from teacher; soft-probability matching during pre-training.</li>
+<li><b>MiniLM</b> (Wang 2020b): distil the self-attention module of the teacher's <i>last</i> transformer layer.</li>
+<li><b>MobileBERT</b> (Sun 2020): trains a special teacher first, then feature + attention transfer.</li>
+<li><b>TinyBERT</b> (Jiao 2019): both pre-training and task-specific distillation; logits, attention matrices, hidden states, and embedding-layer output.</li>
+<li><b>PKD</b> (Sun 2019): two incremental-distillation strategies. Turc 2019 (PD, pre-trained distillation). <b>XtremeDistil</b> / XtremeDistilTransformers (Mukherjee &amp; Awadallah 2020; Mukherjee 2021): architecture-agnostic / task-agnostic. MetaDistill (Zhou 2021b): meta-learning feedback.</li>
+</ul>
+<h4>White-box: decoder-based / recent</h4>
+<ul>
+<li><b>GKD</b> (Agarwal 2023/2024): train student on its <i>self-generated</i> outputs. <b>PC-LoRA</b> (Hwang 2024): progressive compression + fine-tuning concurrently. <b>MiniLLM</b> (Gu 2024): use <b>reverse KL</b> so the student does not overestimate low-probability regions of the teacher distribution. TED (Liang 2023a). CKA-based (Dasgupta &amp; Cohn 2025): match hidden states of different dimensionality → smaller students, higher compression. Gong 2025: align feature dynamics.</li>
+<li><b>Industry pre-training-stage KD:</b> Liu 2023b (data-free quantization-aware training — a quantized teacher version trained as student); NVIDIA pruning-aware distillation (Muralidharan 2024: prune teacher's neurons then post-train with a small portion of data via KD; Sreenivas 2024: adds a <b>teacher-correction</b> step); <b>Gemma 3</b> (logit sampling) and <b>Qwen3</b> (weak-to-strong distillation).</li>
+</ul>
+<h4>Black-box</h4>
+<ul>
+<li><b>ICL</b> (introduced in GPT-3): teacher gets task description + few examples + query; student mimics the response. Huang 2022e (ILD): combine ICL objective with LM objective; <b>AICD</b> (Liu 2024): jointly distil ICL + reasoning (likelihood of all rationales in context); <b>LLM-R</b> (Wang 2023h): iteratively train dense retrievers that find high-quality in-context examples.</li>
+<li><b>Instruction following:</b> teacher generates task instructions; student fine-tuned. <b>Self-Instruct</b> (generate instruction/input/output → filter → fine-tune); <b>UniversalNER</b> (mission-focused instruction tuning); <b>Lion</b> (adversarial generation of hard instructions); <b>LaMini-LM</b> (2.58M instructions).</li>
+<li><b>Chain-of-thought</b> (most popular): teacher produces rationales + predictions; student learns to produce similar reasoning (analogous to feature learning). First: Li 2022e. <b>Magister 2022</b>: model-size vs dataset-size trade-off, reasoning transferable to SLMs. <b>Fine-tune-CoT</b> (Ho 2022). <b>Distilling step-by-step</b> (Hsieh 2023): multi-task learning with rationales. <b>MCC-KD</b> (Chen 2023a): multiple rationales per sample, enforcing consistency and diversity. <b>TDG</b> (Li 2024g): uses both positive and negative (incorrect-label) reasoning. <b>RevThink</b> (Chen 2024c): backward questions + reasoning, train on forward + backward → better generalization. Others: SCOTT, CSoTD, DOCTOR, PaD, MiniPLM.</li>
+</ul>
+<div class="box"><b class="t">White vs. black summary</b>
+White-box: more effective (internal access) but costly and most strong LLMs are closed. Black-box: works on any model but only sees teacher-generated data → may be less general. <b>Suggested strategy:</b> first black-box distil closed-source → open-source model, then apply white-box distillation from that open model.</div>
+
+
+<h4>Math for LLM distillation <span class="std">standard form</span></h4>
+<div class="eq">TinyBERT (layer-wise):      L = L_emb + Σ_{m=1..M} ( L_hid^(m) + L_attn^(m) ) + L_pred
+   L_emb  = MSE( E_S W_e , E_T )           embedding layer
+   L_hid  = MSE( H_S W_h , H_T )           hidden states
+   L_attn = (1/h) Σ_{i=1..h} MSE( A_i^S , A_i^T )     attention matrices
+   L_pred = − softmax(z_T/τ) · log softmax(z_S/τ)      soft cross-entropy on logits
+
+DistilBERT:               L = α·L_CE(soft) + β·L_MLM + γ·L_cos( h_S , h_T )          (soft-label + masked-LM + cosine embedding)
+
+MiniLM (last layer):      L_attn = KL( A_T^last ‖ A_S^last ) ;   L_val = KL( VR_T ‖ VR_S ) ,   VR = softmax( V Vᵀ / √d )       (value-relation)
+
+MiniLLM (reverse KL):     L = KL( q_θ ‖ p ) = E_{y ~ q_θ(·|x)} [ log q_θ(y|x) − log p(y|x) ]
+                          → mode-seeking: student avoids putting mass where the teacher has low probability
+                          (forward KL(p ‖ q) is mean-seeking → student over-estimates low-probability regions)
+
+GKD (on-policy):          L = E_x  E_{y ~ p_S(·|x)}  [ D( p_T ‖ p_S )( y | x ) ] ,    D = forward KL, reverse KL or generalised JSD
+                          (train on the student's own samples to remove train/inference distribution mismatch)
+
+Chain-of-thought distillation:   teacher outputs rationale r and answer a;   L = − log p_S( r , a | x )
+Step-by-step multi-task (Hsieh 2023):   L = L_label( x → a ) + λ · L_rationale( x → r )
+Backward reasoning (RevThink):    L = L_forward( x → r , a ) + L_backward-question( x,a → x̃ ) + L_backward-reasoning( x̃ → r̃ )
+
+Instruction following (Self-Instruct):  data D = { (instruction, input, output) } generated by the teacher, filtered;  L = − Σ log p_S( output | instruction, input )
+
+In-context distillation:  L = L_LM + λ·L_ICL ,   L_ICL = − log p_S( y_query | examples , x_query )   (ILD, Huang 2022e)
+
+Compression rate (Table 16):   rate = #params_teacher / #params_student ;     "Comparison with teacher" = score_student / score_teacher × 100%</div>
+<p><b>More survey details.</b> <i>White-box BERT family:</i> DistilBERT initialises the student from the teacher and minimises soft probabilities during pre-training; MiniLM distils the last transformer layer's self-attention module; MobileBERT trains a special teacher first, then uses feature and attention transfer; TinyBERT does pre-training and task-specific distillation of logits, attention matrices, hidden states and the embedding-layer output; PKD proposes two incremental strategies; XtremeDistil is architecture-agnostic and XtremeDistilTransformers task-agnostic; MetaDistil uses a meta-learning feedback loop. <i>Decoder-based:</i> TED, GKD, Pc-LoRA, MiniLLM, Anshumann 2025; CKA-style alignment (Dasgupta &amp; Cohn 2025) lets hidden states of different dimensionality be matched so students can be smaller. <i>Industry:</i> Liu 2023b (data-free + quantisation-aware training), Muralidharan 2024 / Sreenivas 2024 (prune the teacher's neurons then post-train with a small portion of the data via KD; the latter adds a teacher-correction step), Gemma 3 (logit sampling), Qwen3 (weak-to-strong distillation). <i>Black-box:</i> ICL (introduced in GPT-3: task description + few examples + query), IF (teacher generates instructions the student is fine-tuned on: Self-Instruct, UniversalNER, Lion, LaMini-LM with 2.58M instructions, Li 2024d), CoT (Li 2022e first; Ho 2022; Hsieh 2023; Chen 2023a; Magister 2022 on the size/data trade-off; Li 2023d; Wang 2023j; Zhu 2023b; Chae 2023; Li 2024g uses both positive and negative data; Chen 2024c; Zhuang 2025).</p>
+<h3 id="fm">6.2 Foundation-model distillation</h3>
+<p>FMs: large pretrained models generalising to many tasks — VLMs (CLIP), conversational agents (ChatGPT), generative (DALL-E), vision models (SAM, DINO), transformers (ViT, DETR, Swin, DeiT). KD reduces cost and enables specialised/edge students. Fig. 9 maps FM → tasks; Fig. 10 shows architectures and common extraction points.</p>
+<h4>6.2.1 CLIP / VLMs</h4>
+<ul>
+<li><b>Open-vocabulary tasks:</b> shift from fixed-label datasets to an open-world paradigm; CLIP's image–text knowledge is distilled into detectors (ViLD-style works: Gu 2021b; Zang 2022; Kuo 2022; Zhou 2022d; Wu 2023d; etc.) and segmenters (Ding 2022a; Ghiasi 2022; Liang 2023b; Xu 2022a; etc.), also part segmentation (Choi 2024). Wei 2025: open-vocabulary customization of CLIP via <b>data-free KD</b>.</li>
+<li><b>Weakly supervised semantic segmentation:</b> text prompts query CLIP's aligned embedding space to produce coarse class activation maps (Xie 2022; Lin 2023b; Xu 2023b; Deng 2023; Zhou 2025; …).</li>
+<li><b>Prompt learning:</b> learnable soft prompts (text or visual) instead of hand-designed hard prompts, adapting without retraining (Zhou 2022c/b; Li 2024h; Ge 2023; Rao 2022).</li>
+<li><b>Generation &amp; editing</b> (2D and 3D, text-guided); <b>others:</b> person re-ID, zero-shot HOI detection, open-vocabulary OOD classification, domain generalization, video-language retrieval, affordance detection, video highlight detection, monocular depth estimation.</li>
+</ul>
+<h4>6.2.2 Segment Anything (SAM)</h4>
+<p>Promptable (points/boxes/masks) ViT-based segmenter. KD uses: distil into lighter task-specific models (Zhang 2024e; Hetang 2024; Rahman 2024); <b>weakly supervised semantic segmentation</b> — SAM generates high-quality pseudo-labels from tags/points/boxes to train efficient models (Kweon &amp; Yoon 2024; Jiang &amp; Yang 2023; Chen &amp; Sun 2023; Chen 2023c; Sun 2023a), reducing labeling cost.</p>
+<h4>6.2.3 Multi-model applications</h4>
+<p>Combine complementary FMs as teachers: <b>SAM + CLIP</b> (segmentation + semantics; Wang 2024d; Aleem 2024; Yang &amp; Gong 2024), <b>DINO + CLIP</b> (self-supervised features + language alignment; Wysoczańska 2024b; Kerr 2023), <b>DETR + CLIP</b> (open-vocabulary detection; Jiang 2024b), <b>SAM + Grounding-DINO</b> (Ren 2024; Das 2024); general multi-FM studies (Ranzinger 2024; Yin &amp; Jiang 2024; Sun 2023c; Shang 2024; etc.).</p>
+<h4>6.2.4 Vision transformers</h4>
+<p>ViTs capture long-range dependencies but are costly. Table 9:</p>
+<div class="tw"><table>
+<tr><th>Method</th><th>Contribution</th></tr>
+<tr><td>SMKD (Lin 2023a)</td><td>ViTs overfit/degrade in few-shot (no CNN inductive bias) → KD method to address it</td></tr>
+<tr><td>TinyMIM (Ren 2023a)</td><td>Transfer benefits of large Masked-Image-Modeling pre-trained models to smaller ones</td></tr>
+<tr><td>Incrementer (Shang 2023a)</td><td>ViT-based class-incremental semantic segmentation (global context + convolutional layers for new classes)</td></tr>
+<tr><td>CST (Kang 2023b)</td><td>Self-distillation using attention maps from frozen ViT to make pseudo-labels for few-shot weakly supervised tasks</td></tr>
+<tr><td>DMAE (Bai 2023)</td><td>Distil intermediate features (not logits) from large ViT to smaller</td></tr>
+<tr><td>CSKD (Zhao 2023a)</td><td>Improve ViT via KD <i>from CNNs</i></td></tr>
+<tr><td>ViTKD (Yang 2024)</td><td>Distil feature maps between ViTs (not logits), DeiT as base</td></tr>
+</table></div>
+<ul>
+<li><b>DINO</b> (Caron 2021): self-supervised ViT; its features used for unsupervised object discovery (Siméoni 2021/2023; Wang 2022b/2023n; Kara 2024), open-world counting, zero-shot semantic segmentation.</li>
+<li><b>DETR</b> (Carion 2020): end-to-end detector, no anchors/post-processing; heavy → compressed via KD (Chang 2023; Wang 2024m).</li>
+<li><b>Swin</b> (Liu 2021e): hierarchical, shifted-window attention; widely used as encoder (Table 10 lists MaskFormer, DFR, SwinNet, SwinTrack, SwinF, Swin-UNETR, Ssformer, HGI-SAM, HiFormer, Swin-Fusion, P.Swin, SCUNet++, SWTformer across segmentation, tracking, medical, action recognition tasks).</li>
+</ul>
+
+
+<h4>Math for foundation-model distillation <span class="std">standard form</span></h4>
+<div class="eq">CLIP-based open-vocabulary detection/segmentation:   region embedding r_i from the student, text embeddings t_c of class names
+   classification logit:   s_ic = cos( r_i , t_c ) / τ
+   distillation to CLIP's image embedding of the cropped region v_i:   L = ‖ r_i − v_i ‖₁   (or 1 − cos(r_i, v_i))
+   → at test time t_c can be any text, giving an open vocabulary
+
+Pseudo-label distillation from SAM (weak supervision):   ŷ = SAM( x , prompts = tags / points / boxes )
+   student loss:   L = CE( S(x) , ŷ )      (pseudo-labels from the foundation model supervise an efficient student)
+
+Multi-teacher FM distillation (e.g. SAM + CLIP + DINO):   L = Σ_k λ_k · ℓ( h_k( F_S ) , F_{T_k} )     (one head h_k per teacher)</div>
+<p><b>Survey-listed CLIP sub-areas (with reference sets):</b> open-vocabulary object detection (Gu 2021b; Ma 2022; Bangalath 2022; Zang 2022; Xie &amp; Zheng 2022; Kim 2023a; Wu 2023d; Wang 2023i; Du 2022; Feng 2022; Gao 2022b; Huynh 2022; Long 2023; Zhao 2022f; Lin 2022a; Kuo 2022; Zhou 2022d; Yao 2022), semantic segmentation (Lüddecke &amp; Ecker 2022; Ding 2022a; Li 2022a; Zabari &amp; Hoshen 2021; Zhou 2022a/2023d; Ma 2022; Liang 2023b; Xu 2022a; Ghiasi 2022; Shin 2022a; Qin 2023; Wysoczańska 2024a; Chen 2023b), part segmentation (Choi 2024), WSSS (Xie 2022; Lin 2023b; Xu 2023b; Deng 2023; Murugesan 2024; Zhang 2024a; Zhu 2024a; Jang 2024; Zhou 2025), prompt learning (Zhou 2022c/b; Li 2024h; Ge 2023; Rao 2022), 2D generation/editing (Abdal 2022; Gal 2022; Patashnik 2021), 3D generation/editing (Hyung 2023; Canfes 2023; Hong 2022a; Jain 2022; Kobayashi 2022; Michel 2022; Sanghi 2022; Wang 2022a), person re-ID (Liu 2024c), zero-shot HOI (Wan &amp; Tuytelaars 2024), OOD (Li 2023f), domain generalisation (Huang 2023c), video-language retrieval (Pei 2023), affordance detection (Cuttano 2024), video highlight detection (Han 2024a), monocular depth (Son &amp; Lee 2024), multi-task (Yang 2023a; Nair 2024; Wu 2023b; Dong 2023b).</p>
+<p><b>SAM:</b> prompts = points, boxes, masks; ViT-based; zero-shot generalisation. Distilled into light task-specific models (Zhang 2024e; Hetang 2024; Rahman 2024). <b>Foundation models list in the survey:</b> VLMs (CLIP), conversational agents (ChatGPT/GPT), generative (DALL-E), SAM, DINO, ViT, DETR, Swin, DeiT. <b>DINO downstream (via distillation of its features):</b> unsupervised object discovery (Kara 2024; Siméoni 2021/2023; Wang 2023n/2022b; Liu 2024f), open-world counting (Amini-Naieni 2024), zero-shot semantic segmentation. <b>DETR compression:</b> Chang 2023; Wang 2024m.</p>
+<h3 id="ssl">6.3 Distillation in self-supervised learning</h3>
+<p>Self-distillation underpins the most prominent SSL methods.</p>
+<ul>
+<li><b>SimCLR</b> (Chen 2020c): shared network, two augmentations, align embeddings. <b>MoCo</b> (He 2020; Chen 2020d) and <b>BYOL</b> (Grill 2020): same network, but student trained by backprop and <b>teacher = EMA of student</b>. <b>SwAV</b> (Caron 2020): prototypes; student predicts same cluster code as the teacher for augmentations of the same image. <b>DINO / DINOv2</b>: global + local crops through teacher (EMA) and student, representations forced to match — "local-to-global" suits segmentation.</li>
+<li><b>More complex:</b> <b>BINGO</b> (Xu 2021; pretrained SSL groups images into bags, inter- and intra-sample losses); Wang 2023l (two SSL teachers — image &amp; video — with masked modeling; spatial features from image teacher, spatio-temporal from video teacher); Song 2023a (parallel SSL + consistency losses); Gao 2022c (known KD within SSL using a pretrained SSL model).</li>
+<li><b>Distilling a pretrained SSL model into a small one:</b> Abbasi Koohpayegani 2020 (<b>CompRess</b>; similarity-based; gap with supervised shrinks as model grows; distilled model can outperform the supervised counterpart); <b>SEED</b> (Fang 2021; queue of anchors, match student–anchor distances to teacher–anchor distances); Navaneet 2022 (effect of an MLP after student representations); Tejankar 2021; Dadashzadeh 2022 (auxiliary pre-training phase for small unlabeled datasets).</li>
+</ul>
+
+
+<h4>Math for self-distillation in SSL <span class="std">standard form</span></h4>
+<div class="eq">SimCLR (NT-Xent):   ℓ_{i,j} = − log [ exp( sim(z_i,z_j)/τ ) / Σ_{k≠i} exp( sim(z_i,z_k)/τ ) ]       (two augmentations of one image)
+
+BYOL (EMA teacher):  θ_T ← m·θ_T + (1 − m)·θ_S
+                     L = ‖ q(z_S)/‖q(z_S)‖ − sg(z_T)/‖z_T‖ ‖² = 2 − 2·cos( q(z_S), sg(z_T) )       (sg = stop-gradient; q = predictor)
+
+MoCo:               InfoNCE against a queue of teacher-encoded keys;  key encoder = EMA of the query encoder
+
+SwAV:               L = ℓ( z_1 , q_2 ) + ℓ( z_2 , q_1 ) ,   q = cluster code (Sinkhorn-Knopp assignment to prototypes); student predicts the teacher's code
+
+DINO:               p_T = softmax( ( g_T(x_global) − c ) / τ_T )  (centering c, sharp τ_T)      p_S = softmax( g_S(x) / τ_S )
+                    L = Σ_{x ∈ global views} Σ_{x' ∈ all views, x' ≠ x}  − p_T(x) · log p_S(x')       (local-to-global correspondence)
+                    θ_T ← m·θ_T + (1 − m)·θ_S
+
+SEED (Fang 2021):   with a queue of anchors A:   L = − Σ_a  softmax_a( sim(z_T, a)/τ_T ) · log softmax_a( sim(z_S, a)/τ_S )
+                    (student matches the teacher's similarity distribution over anchors; similarity-based SSL distillation)</div>
+<p><b>Survey details.</b> The paper states that self-distillation is "the basis of the most prominent works in SSL, especially in vision". SimCLR is described as a shared network receiving two augmentations; MoCo/BYOL use the same network with a different training procedure (student by backprop, teacher = EMA); SwAV assigns codes via prototypes; DINO / DINOv2 pass global and local patches through teacher and student, and the local-to-global design suits segmentation. More complex: BINGO (bag of samples from a pretrained SSL model; inter- and intra-sample losses per epoch), Wang 2023l (image teacher + video teacher with masked modelling), Song 2023a (parallel SSL with consistency losses), Gao 2022c, Gu 2021a, Misra &amp; Maaten 2020, Xu 2021. <i>Small-model SSL:</i> the gap between supervised and self-supervised nets shrinks with model size (Abbasi Koohpayegani 2020); Navaneet 2022 studies an MLP layer after the student's representation; Tejankar 2021; Dadashzadeh 2022 (auxiliary pre-training phase for small unlabeled data).</p>
+<h3 id="diffusion">6.4 Diffusion-model distillation</h3>
+<p>Diffusion models (Ho 2020; Song 2020) need hundreds–thousands of denoising steps. KD aims at the same quality with far fewer steps and less compute.</p>
+<div class="tw"><table>
+<tr><th>Strategy</th><th>Idea</th><th>Methods</th></tr>
+<tr><td>Feature-level</td><td>Student mimics teacher's internal representations; denoising (Huang 2023b), external guidance (Hsiao 2024), cross-sample consistency (Feng 2024b), + compression (Zhang 2024b)</td><td>DiffKD etc.</td></tr>
+<tr><td>Sampling-process</td><td>Merge steps</td><td><b>Progressive distillation</b> (Salimans &amp; Ho 2022): two steps → one, repeat. <b>Distribution Matching Distillation</b> (Yin 2024c): one-step student's output distribution matched to the full teacher's. Zhou 2024e.</td></tr>
+<tr><td>Adversarial / data-free</td><td>GAN losses; bootstrapping</td><td>Sauer 2024; Mekonnen 2024; <b>EM distillation</b> (Xie 2024b; bootstrapping between successive denoising steps, no large synthetic dataset)</td></tr>
+<tr><td>Consistency models</td><td>Direct (often single-step) noisy → clean mapping</td><td>Song 2023c; Song &amp; Dhariwal 2023; Geng 2024; latent variants (Luo 2023a; Xie 2024a); stability/scalability (Lu &amp; Song 2024)</td></tr>
+<tr><td>Cross-modal / universal</td><td>Text-to-3D, general-purpose</td><td>ProlificDreamer (Wang 2023q), DreamFusion (Poole 2022), Diff-Instruct (Luo 2023b)</td></tr>
+</table></div>
+<div class="box"><b class="t">Trade-offs (paper's summary)</b>Sampling distillation: biggest speed-up but cumbersome training to preserve quality. Adversarial/data-free: flexible, possible training instability. Consistency models: low latency if well-calibrated. Cross-modal/universal approaches widen applicability.</div>
+
+
+<h4>Math for diffusion distillation <span class="std">standard form</span></h4>
+<div class="eq">Forward process:   x_t = √ᾱ_t · x_0 + √(1 − ᾱ_t) · ε ,   ε ~ N(0, I)          teacher reverse step:  x_{t−1} = Φ_T( x_t, t )
+
+Progressive distillation (Salimans &amp; Ho 2022):  student takes ONE step to match TWO teacher steps
+   x̃ = Φ_T( Φ_T( x_t, t ), t − 1 )          L = ‖ Φ_S( x_t, t ) − x̃ ‖²          then student → new teacher; repeat (N → N/2 → N/4 …)
+
+Distribution matching (Yin 2024c):  one-step generator G_θ ;   minimise  KL( p_fake ‖ p_real )  with gradient
+   ∇_θ KL ≈ − E_z [ ( s_real( x_t ) − s_fake( x_t ) ) · ∂G_θ(z)/∂θ ]          (s = score functions of the real / fake distributions)
+
+Consistency models (Song 2023c):   f_θ( x_t, t ) → x_0  for every t on the same trajectory;   f_θ( x_ε, ε ) = x_ε  (boundary condition)
+   consistency-distillation loss:   L = d( f_θ( x_{t_{n+1}}, t_{n+1} ) , f_{θ⁻}( x̂_{t_n}, t_n ) )     θ⁻ = EMA(θ),  x̂_{t_n} = one ODE step with the teacher
+
+Score distillation (DreamFusion / ProlificDreamer):   ∇_φ L_SDS = E_{t,ε}[ w(t) · ( ε̂_ψ( x_t ; y, t ) − ε ) · ∂x/∂φ ]
+   (φ = parameters of the 3D representation, ε̂_ψ = frozen 2D diffusion model's noise prediction, y = text prompt)
+
+Feature-level:   L = ‖ F_S( x_t , t ) − F_T( x_t , t ) ‖²    + denoising/guidance variants (Huang 2023b; Hsiao 2024; Feng 2024b; Zhang 2024b)</div>
+<p><b>Survey categories and refs.</b> Feature-level (Huang 2023b; Hsiao 2024; Feng 2024b; Zhang 2024b), sampling process (Salimans &amp; Ho 2022; Yin 2024c; Zhou 2024e), adversarial &amp; data-free (Sauer 2024; Mekonnen 2024; EM distillation, Xie 2024b — bootstraps between successive denoising steps, no big synthetic set), consistency models (Song 2023c; Song &amp; Dhariwal 2023; Geng 2024; latent variants Luo 2023a, Xie 2024a; Lu &amp; Song 2024 for stability/scalability), cross-modal/universal (ProlificDreamer, DreamFusion, Diff-Instruct). Motivation: diffusion needs hundreds to thousands of denoising steps; distilled models target the same quality with far fewer steps and much less inference time/compute.</p>
+<h3 id="visual">6.5 Visual recognition tasks</h3>
+<p>Table 11 maps tasks → knowledge type (feature / logit / similarity / combos) → scheme (offline / online / self-distillation) → references. Tasks covered: depth estimation, face recognition, image segmentation, medical imaging, object detection, object tracking, pose estimation, super resolution, action recognition, image retrieval. Examples that appear in the table: segmentation — CIRKD, AICSD, Feng 2021 (DSD), BPKD, FAKD, LAD (offline); online variants (Shen 2023; Gao 2022a; Zhu 2023a); detection — MGD (Yang 2022f), Nguyen 2022 (online), Zhang 2022c (self); pose — Li 2021b (online), Li &amp; Lee 2021 (self); super-resolution — Jiang 2024d, Liu 2024b, Wang 2024e; medical — Xing 2021 (online), You 2022 (self); retrieval — Suma &amp; Tolias 2023, Xie 2024c. Use the table in the PDF for the full taxonomy.</p>
+
+
+<h4>Table 11 (partial reconstruction): visual-recognition tasks and the methods grouped under them</h4>
+<div class="tw"><table>
+<tr><th>Task</th><th>Methods listed in the survey table (knowledge type / scheme as in the PDF)</th></tr>
+<tr><td>Depth estimation</td><td>López-Cifuentes 2023 (feature, offline); Zhou &amp; Dong 2022 (feature, self); Shi 2023, Ka 2024, Hu 2024a, Marsal 2024, Chen 2024e (similarity, offline / self); Wu 2023f (feature+logit, offline); Shao 2024b (feature+logit, online)</td></tr>
+<tr><td>Face recognition</td><td>Neto 2024, Caldeira 2024, Babnik 2024 (feature, offline); Huang 2022d (offline); Di 2024 (similarity, self)</td></tr>
+<tr><td>Image segmentation</td><td>feature: FAKD (Yuan 2024a), LAD (Liu 2024g), Wu 2024b (self); logit: Li 2024c; Shen 2023, Berrada 2024 (online); similarity: CIRKD, AICSD (offline), Gao 2022a (online); feature+logit: Xiao 2023a, Zheng 2025, Zhu 2023a; feature+similarity: DSD (Feng 2021), BPKD-type (Liu 2024d), Wang 2024p (online)</td></tr>
+<tr><td>Medical imaging</td><td>feature: Chen 2024d, Zhou 2024c (offline), Dong 2025 (online), Ye 2022, Yi 2024a (self); logit: Feng 2024c, Wang 2024l (offline), Xie 2023c (online), Zhong 2023, Huang 2024b (self); similarity: Xing 2021 (online), You 2022, Sharma 2024 (self); feature+logit: El-Assiouti 2024 (offline); feature+similarity: Liu 2022c, Qi 2024 (offline)</td></tr>
+<tr><td>Object detection</td><td>feature: MGD (Yang 2022f), Lao 2023, Li 2023c; logit: Zhou 2023a (self), Nguyen 2022 (online); similarity: Ni 2023 (offline); feature+logit: Tang 2022a, Du 2021, Zhang &amp; Ma 2021, Yao 2021, Yang 2022e, Li 2022b; logit+similarity: Wang 2024f</td></tr>
+<tr><td>Object tracking</td><td>feature: Hou 2024, Zhang 2024h (offline); logit: Valverde 2021; feature+similarity: Wang 2024k</td></tr>
+<tr><td>Pose estimation</td><td>feature: Nie 2019 (offline), Chen 2024f (self); Wang 2021c, Aghli &amp; Ribeiro 2021, Xu 2022c, Zhang 2019a (offline); Li 2021b (online); Li &amp; Lee 2021 (self); feature+logit: Fang 2023b, Guan 2023 (offline), Yang 2023h (self)</td></tr>
+<tr><td>Super-resolution</td><td>feature: Jiang 2024d, Liu 2024b (offline), Wang 2024e, Wang &amp; Zhang 2024 (self); logit: Noroozi 2024 (offline), Park 2024 (self); relation: Angarano 2022, Zhang 2024j; feature+similarity: Xie 2023a, Fang 2023a (offline), Wang 2021f (self)</td></tr>
+<tr><td>Action recognition</td><td>Lee 2023b, Huang 2024d (offline); Guo 2023a (online); logit: Radevski 2023; feature+similarity: Dai 2021a, Bian 2021</td></tr>
+<tr><td>Image retrieval</td><td>feature+logit: Xie 2023b; feature+similarity: Suma &amp; Tolias 2023, Xie 2024c</td></tr>
+</table></div>
+<p><i>Note:</i> the original table's row/column layout was heavily multi-line; entries are grouped per task as best readable. The key message of the survey's Table 11: nearly every vision task has been addressed with feature, logit, similarity, or hybrid sources under offline schemes mostly, with online and self-distillation less common.</p>
+<!-- ======================= 7 ======================= -->
+<h2 id="performance">7. Performance comparison</h2>
+<div class="box warn"><b class="t">Caveat from the authors</b>Fair comparison is very hard: results depend on the exact pretrained teacher, epochs, batch size, hyperparameters and hardware. Reported numbers come from the original papers (starred values = the authors' own runs when the paper didn't report the setting). The survey <b>deliberately makes no claim about which method is best</b>. Baselines differ per method, so absolute gain "(+x)" is not comparable across rows.</div>
+<h4>Datasets used</h4>
+<ul>
+<li><b>CIFAR-100:</b> 32×32, 100 classes, 50k train / 10k test.</li>
+<li><b>ImageNet:</b> &gt;1.2M train, 50k val, 100k test images; 1000 classes.</li>
+<li><b>Cityscapes:</b> urban scenes, 2,975/500/1,525 train/val/test, 19 classes.</li>
+<li><b>PASCAL VOC:</b> 1,464/1,449/1,456 train/val/test, 21 classes.</li>
+</ul>
+<p>Settings: teacher and student of <i>similar</i> architecture and of <i>different</i> architecture are both shown where available.</p>
+
+<h4>Methods compared in each table</h4>
+<ul>
+<li><b>Table 12 (CIFAR-100):</b> FitNet, KD, AT, CCKD, SPKD, CRD, OFD, Chen 2020f, TAKD, SphericalKD, RKD (Chen 2021d), SemCKD, ICKD, DKD, DistKD, Norm, SFKD, NormKD, CRLD, NTCE-KD, TTM, Miles &amp; Mikolajczyk 2024, SDD, Sun 2024a, InDistill, IKD, ADG-KD, TeKAP — grouped by source (feature / logit / similarity / mixtures).</li>
+<li><b>Table 13 (ImageNet):</b> same list plus CAT-KD (Guo 2023d), NKD (Yang 2023g), MLLD (Jin 2023a); teacher ResNet-34 → student ResNet-18, and ResNet-50 → MobileNetV1.</li>
+<li><b>Table 14 (PASCAL VOC) / Table 15 (Cityscapes):</b> FitNet, KD, AT, SKD, He 2019, IFVD, CWD, DSD, CIRKD, DIST, IDD, MGD, FAKD, BPKD, LAD, AttnFD, AICSD (+ Xie 2018, MLP, DiffKD, FreeKD on Cityscapes). Teacher–student pairs: DeepLab-R101 / PSPNet-R101 teachers → DeepLab-R18 / PSPNet-R18 / DeepLab-MV2 (and ESPNet for IDD) students.</li>
+<li><b>Table 16 (LLMs):</b> 13 white-box methods + 16 black-box methods (ICL, IF, CoT) as listed below.</li>
+</ul>
+<p><b>What the tables show (my summary; the survey itself refuses to rank):</b> most methods improve a student by roughly +1 to +5 points on classification and +1 to +9 mIoU on segmentation depending on pair and baseline; heterogenous teacher–student pairs (e.g. ResNet-50 → MobileNet) are harder than homogeneous ones; but the authors explicitly refuse to rank methods because of non-uniform hyperparameters, teachers and compute.</p>
+<h4>Representative numbers actually attributable to methods</h4>
+<div class="tw"><table>
+<tr><th>Dataset</th><th>Method</th><th>Teacher → Student (baseline acc.)</th><th>Result</th></tr>
+<tr><td rowspan="5">CIFAR-100</td><td>CCKD</td><td>ResNet-110 → ResNet-20 (68.40)</td><td>72.40 (+4.00)</td></tr>
+<tr><td>Chen 2020f</td><td>ResNet-101 (71.77) → ResNet-18 (65.64)</td><td>69.14 (+3.49)</td></tr>
+<tr><td>SphericalKD</td><td>ResNet-32×4 (79.42) → ResNet-8×4 (72.50)</td><td>76.40 (+3.90)</td></tr>
+<tr><td>ICKD</td><td>WRN-40-2 (75.61) → WRN-40-1 (71.98)</td><td>74.63 (+2.65)</td></tr>
+<tr><td>InDistill</td><td>WRN-40-2 (75.61) → WRN-40-1 (71.98)</td><td>75.09 (+3.11)</td></tr>
+<tr><td colspan="4">Other pairs in the table: ResNet32×4→ShuffleNetV2 (71.82), ResNet50→MobileNetV2 (64.60), WRN-40-2→WRN-16-2 (73.64). Gains in extracted rows range roughly +2.4 to +7.6 (e.g. ResNet32×4→ShuffleNetV2 reaches 79.43, +7.61).</td></tr>
+<tr><td rowspan="7">ImageNet</td><td>FitNet</td><td>ResNet-34 (73.31) → ResNet-18 (69.75)</td><td>70.31 (+0.56)</td></tr>
+<tr><td>SemCKD</td><td>ResNet-34 → ResNet-18</td><td>70.87 (+1.12)</td></tr>
+<tr><td>ICKD</td><td>ResNet-34 → ResNet-18</td><td>72.19 (+2.44)</td></tr>
+<tr><td>SphericalKD</td><td>ResNet-34 → ResNet-18</td><td>72.30 (+2.55)</td></tr>
+<tr><td>SDD</td><td>ResNet-34 → ResNet-18</td><td>72.33 (+2.58)</td></tr>
+<tr><td>InDistill</td><td>ResNet-34 → ResNet-18</td><td>71.34 (+1.59)</td></tr>
+<tr><td>IKD</td><td>ResNet-34 → ResNet-18</td><td>71.82 (+2.07)</td></tr>
+<tr><td colspan="4">Different-architecture pair: ResNet-50 (76.16) → MobileNetV1 (68.87 or 70.13 depending on the method's baseline); one starred baseline method even gives 68.58 (−0.29); best rows reach ≈74.9 (+6.03).</td></tr>
+<tr><td rowspan="6">PASCAL VOC (mIoU)</td><td>IDD</td><td>PSPNet-R101 (77.86) → PSPNet-R18 (70.80)</td><td>76.70 (+5.9)</td></tr>
+<tr><td>AttnFD</td><td>DeepLab-R101 (77.85) → DeepLab-R18 (67.50)</td><td>73.09 (+5.59)</td></tr>
+<tr><td>LAD</td><td>PSPNet-R101 (78.52) → DeepLab-R18 (71.98)</td><td>76.33 (+4.35)</td></tr>
+<tr><td>BPKD</td><td>PSPNet-R101 (78.52) → PSPNet-R18 (71.35)</td><td>75.74 (+4.39)</td></tr>
+<tr><td>MGD</td><td>PSPNet-R101 (78.52) → PSPNet-R18 (71.35)</td><td>74.98 (+3.63)</td></tr>
+<tr><td>AICSD</td><td>DeepLab-R101 (77.85) → DeepLab-R18 (67.50)</td><td>70.58 (+3.08)</td></tr>
+<tr><td rowspan="6">Cityscapes (mIoU)</td><td>AttnFD</td><td>DeepLab-R101 (77.66) → DeepLab-R18 (64.09)</td><td>73.04 (+8.96)</td></tr>
+<tr><td>IDD</td><td>PSPNet-R101 (78.50) → PSPNet-R18 (70.09)</td><td>77.59 (+7.5)</td></tr>
+<tr><td>AICSD</td><td>DeepLab-R101 (77.66) → DeepLab-R18 (64.09) / MV2 (63.05)</td><td>70.96 (+6.88) / 69.51 (+6.56)</td></tr>
+<tr><td>DiffKD</td><td>DeepLab-R101 (78.07) → DeepLab-R18 (74.21)</td><td>77.78 (+3.57)</td></tr>
+<tr><td>BPKD</td><td>PSPNet-R101 (79.74) → PSPNet-R18 (74.23)</td><td>77.57 (+3.34)</td></tr>
+<tr><td>DIST</td><td>DeepLab-R101 (78.07) → DeepLab-R18 (74.21)</td><td>77.10 (+2.89)</td></tr>
+</table></div>
+<p>In segmentation, the older baselines (FitNet, vanilla KD, AT) give gains of only about +0.7 to +2.5 on VOC and +0.7 to +1.2 on Cityscapes, while the newer feature / similarity methods above reach +3 to +9. (Exact per-baseline row attribution is ambiguous in the extracted tables, so I give ranges.)</p>
+
+<h4>Table 16: LLM distillation (student score / teacher score = % of teacher; compression rate)</h4>
+<div class="tw"><table>
+<tr><th>Type</th><th>Method</th><th>Teacher</th><th>Compr.</th><th>Benchmark</th><th>Student / Teacher</th><th>% of teacher</th></tr>
+<tr><td>White (logit)</td><td>DistilBERT</td><td>BERT-base</td><td>1.66×</td><td>GLUE</td><td>77.0 / 79.5</td><td>97.0%</td></tr>
+<tr><td>White (feature)</td><td>TinyBERT</td><td>BERT-base</td><td>7.5×</td><td>GLUE</td><td>77.0 / 79.5</td><td>97.0%</td></tr>
+<tr><td>White</td><td>PKD</td><td>BERT-base</td><td>2.0×</td><td>GLUE</td><td>77.7 / 84.9</td><td>92.0%</td></tr>
+<tr><td>White</td><td>PD (Turc)</td><td>BERT-base</td><td>2.0×</td><td>GLUE</td><td>82.1 / 81.7</td><td>100.5%</td></tr>
+<tr><td>White</td><td>XtremeDistil</td><td>mBERT-base</td><td>35×</td><td>Multilingual NER</td><td>88.6 / 92.7</td><td>95.0%</td></tr>
+<tr><td>White</td><td>MobileBERT</td><td>BERT-base</td><td>4.3×</td><td>GLUE</td><td>77.7 / 78.3</td><td>99.0%</td></tr>
+<tr><td>White</td><td>MiniLM</td><td>BERT-base</td><td>1.65×</td><td>GLUE</td><td>80.4 / 81.5</td><td>98.0%</td></tr>
+<tr><td>White</td><td>XtremeDistilTransformers</td><td>BERT-base</td><td>7.7×</td><td>GLUE</td><td>81.7 / 83.7</td><td>97.6%</td></tr>
+<tr><td>White</td><td>MetaDistil</td><td>BERT-base</td><td>2.0×</td><td>GLUE</td><td>80.4 / 80.7</td><td>99.0%</td></tr>
+<tr><td>White</td><td>TED</td><td>DeBERTaV3-base</td><td>2.6×</td><td>GLUE</td><td>87.5 / 88.9</td><td>98.0%</td></tr>
+<tr><td>White</td><td>MiniLLM</td><td>GPT-2</td><td>2.0×</td><td>DollyEval</td><td>57.4 / 58.4</td><td>94.0%</td></tr>
+<tr><td>White</td><td>PC-LoRA</td><td>BERT-base</td><td>3.73×</td><td>IMDB</td><td>92.78 / 94.0</td><td>98.0%</td></tr>
+<tr><td>White (logit)</td><td>GKD</td><td>T5-XL</td><td>3.75×</td><td>GSM8K</td><td>29.1 / 29.0</td><td>100.3%</td></tr>
+<tr><td>Black (ICL)</td><td>ILD</td><td>GPT-2-large</td><td>6×</td><td>CrossFit</td><td>61.2 / 66.2</td><td>92.0%</td></tr>
+<tr><td>Black (ICL)</td><td>LLM-R</td><td>LLaMA-13B</td><td>2×</td><td>CommonsenseQA</td><td>48.8 / 49.6</td><td>98.0%</td></tr>
+<tr><td>Black (ICL)</td><td>AICD</td><td>GPT-3.5-Turbo</td><td>–</td><td>SVAMP</td><td>51.7 / 20.7</td><td>250%* (before/after distillation)</td></tr>
+<tr><td>Black (IF)</td><td>UniversalNER</td><td>GPT-3.5-Turbo</td><td>–</td><td>Universal NER</td><td>41.7 / 34.9</td><td>119%</td></tr>
+<tr><td>Black (IF)</td><td>LaMini-LM</td><td>Alpaca-7B</td><td>9×</td><td>OpenBookQA</td><td>34.0 / 43.2</td><td>79.0%</td></tr>
+<tr><td>Black (IF)</td><td>Lion</td><td>GPT-175B</td><td>25×</td><td>BBH</td><td>32.0 / 48.9</td><td>65.0%</td></tr>
+<tr><td>Black (CoT)</td><td>Fine-tune-CoT</td><td>GPT-175B</td><td>26×</td><td>SVAMP</td><td>30.33 / 64.67</td><td>47.0%</td></tr>
+<tr><td>Black (CoT)</td><td>Li 2022e</td><td>GPT-175B</td><td>58×</td><td>CommonsenseQA</td><td>82.47 / 73.0</td><td>113%</td></tr>
+<tr><td>Black (CoT)</td><td>Magister 2022</td><td>GPT-175B</td><td>16×</td><td>StrategyQA</td><td>63.77 / 65.4</td><td>97.0%</td></tr>
+<tr><td>Black (CoT)</td><td>MCC-KD</td><td>GPT-3.5-Turbo</td><td>–</td><td>SVAMP</td><td>68.66 / 75.14</td><td>91.0%</td></tr>
+<tr><td>Black (CoT)</td><td>CSoTD</td><td>GPT-175B</td><td>135×</td><td>CommonsenseQA</td><td>67.0 / 82.1</td><td>82.0%</td></tr>
+<tr><td>Black (CoT)</td><td>SCOTT</td><td>GPT-NeoX-20B</td><td>7×</td><td>CommonsenseQA</td><td>74.7 / 60.4</td><td>124%</td></tr>
+<tr><td>Black (CoT)</td><td>Distilling step-by-step</td><td>PaLM-540B</td><td>700×</td><td>SVAMP</td><td>58.4 / 72.3</td><td>81.0%</td></tr>
+<tr><td>Black (CoT)</td><td>PaD</td><td>GPT-3.5-Turbo</td><td>–</td><td>SVAMP</td><td>36.7 / 57.8</td><td>64.0%</td></tr>
+<tr><td>Black (CoT)</td><td>TDG</td><td>GPT-3.5-Turbo</td><td>–</td><td>MATH</td><td>6.81 / 3.88</td><td>175%*</td></tr>
+<tr><td>Black (CoT)</td><td>RevThink</td><td>Gemini-1.5-Pro-001</td><td>30×</td><td>CommonsenseQA</td><td>75.76 / 76.72</td><td>99.0%</td></tr>
+</table></div>
+<p>The authors' reading: LLM distillation is <b>more crucial</b> than in other fields since very high compression rates still give comparable performance. Where the teacher's exact score isn't reported, the starred value compares student before vs. after distillation. (The column order "x / y" follows the paper's table; for starred rows the two numbers are after / before distillation, which explains &gt;100%.)</p>
+
+<!-- ======================= 8 ======================= -->
+<h2 id="discussion">8. Discussion</h2>
+<h3>8.1 Principles of method classification</h3>
+<p>Methods are placed according to their <b>central innovation</b> (main idea / technical novelty); many span multiple categories, so cross-references are given.</p>
+<h3 id="select">8.2 Guidelines for selecting KD strategies (Table 17)</h3>
+<p>Modality and application are fixed by the domain; the real design choices are source, scheme and algorithm.</p>
+<div class="tw"><table>
+<tr><th>Task requirement</th><th>KD source(s)</th><th>Scheme(s)</th><th>Algorithm(s)</th></tr>
+<tr><td>Real-time inference</td><td>Logit-based</td><td>Online</td><td>Attention-based, Adaptive</td></tr>
+<tr><td>Data scarcity / few-shot</td><td>Feature-based</td><td>Self-distillation</td><td>Graph-based, Contrastive</td></tr>
+<tr><td>Model interpretability</td><td>Feature-based</td><td>Offline</td><td>Attention-based, Graph-based</td></tr>
+<tr><td>Fine-grained recognition</td><td>Feature-based, Similarity-based</td><td>Offline</td><td>Attention-based, Contrastive</td></tr>
+<tr><td>Limited compute budget</td><td>Logit-based</td><td>Offline</td><td>Adaptive</td></tr>
+<tr><td>Adversarial robustness</td><td>Logit-based</td><td>Offline</td><td>Adversarial</td></tr>
+<tr><td>Multimodal fusion</td><td>Feature-based</td><td>Offline</td><td>Cross-modal</td></tr>
+<tr><td>Continual / incremental learning</td><td>Logit-based, Similarity-based</td><td>Online</td><td>Adaptive</td></tr>
+<tr><td>Multi-task learning</td><td>Logit-based, Feature-based</td><td>Online</td><td>Adaptive, Multi-teacher</td></tr>
+<tr><td>Learning from noisy labels</td><td>Similarity-based</td><td>Self-distillation</td><td>Contrastive</td></tr>
+</table></div>
+<p>(Paper's caveat: a decision-oriented starting point only; the best choice depends on goals, constraints and context. Cell alignment in the original table is multi-line; this is my best reading of it.)</p>
+<h3>8.3 Quantitative comparison</h3>
+<p>See §7: hyperparameters + teacher weights dominate, so authors avoid direct "which is better" claims, but highlight strengths per category in each section and report both same- and different-architecture teacher/student pairs.</p>
+<h3>8.4 Practical and ethical aspects</h3>
+<ul>
+<li><b>Privacy:</b> KD to reduce memorization in text-to-image models (Fernandez 2023), reduce LLM leakage of sensitive info (Flemings &amp; Annavaram 2024), train a large teacher without exposing edge-device data (Shao 2024a). <b>But</b> DFKD does not inherently guarantee privacy (Zhao &amp; Zhang 2025) and may add vulnerabilities in LLMs (Cui 2025).</li>
+<li><b>Fairness:</b> KD can steer the final student toward more equitable behaviour (Chai 2022).</li>
+<li><b>Energy / sustainability:</b> cheaper students → lower energy use (Yuan 2024c).</li>
+<li><b>Legal/IP:</b> using commercial models as teachers may violate copyright/terms — must be considered in research and deployment.</li>
+</ul>
+<h3 id="challenges">8.5 Challenges</h3>
+<ol>
+<li><b>Knowledge extraction.</b> Choosing the source: logits fail without labels and can't serve foundation-model embeddings; closed-source LLMs hide logits/features → black-box only. Methods often combine sources.</li>
+<li><b>Choosing the scheme.</b> Offline when a big pretrained model exists; online otherwise; self-distillation for SSL. Multi-teacher ("mixture of experts") needs more memory/GPUs. For FMs/LLMs, co-training teacher and student is infeasible → offline dominates.</li>
+<li><b>Capacity gap.</b> A bigger teacher is not always better (receptive fields differ; Cho &amp; Hariharan 2019; Guo 2020a; Huang 2022a). Worse for FMs; black-box LLMs can't transfer intermediate layers. Remedy: methods that make teacher knowledge more digestible.</li>
+<li><b>Architectural difference.</b> Different architectures → degradation. Logit KD remains OK across architectures; feature/similarity KD must select semantically matching layers (different inductive biases). In black-box LLM distillation, <b>CoT</b> sidesteps layer mimicry by giving reasoning steps — but generating good rationales and bridging the capacity gap remain hard.</li>
+</ol>
+<h3 id="future">8.6 Future directions</h3>
+<ul>
+<li><b>Feature-based distillation:</b> trending to even larger gains; simple transformations on features can reach SOTA (Liu 2023c; 2024g); distilling embeddings of FMs like CLIP is growing.</li>
+<li><b>Adaptive distillation:</b> how to distil <i>informative</i> knowledge while ignoring unused/wrong knowledge is largely unexplored (Hsu 2022; Ojha 2023); analogous to human teaching (teaching assistant, decaying teacher influence, sample-importance weighting).</li>
+<li><b>Distillation from foundation models:</b> CLIP text + image embeddings for weakly supervised segmentation; open-vocabulary tasks.</li>
+<li><b>LLM distillation:</b> over-parameterized, sparse weights; most strong LLMs closed → black-box importance; CoT distillation to transfer reasoning; KD in <b>pre-training stage</b> in industry (create smaller versions of a big LLM with quantization/pruning + a small fraction of original data; Qwen3, Gemma 3).</li>
+</ul>
+
+<!-- ======================= 9 ======================= -->
+<h2 id="cheat">9. Quick-recall cheat-sheet</h2>
+<div class="tw"><table>
+<tr><th>Name</th><th>One-liner</th><th>Section</th></tr>
+<tr><td>KD (Hinton 2015)</td><td>KL between temperature-softened teacher/student softmax outputs</td><td>2.1</td></tr>
+<tr><td>FitNet</td><td>Hint-based: L2 between (projected) intermediate features</td><td>2.2</td></tr>
+<tr><td>AT</td><td>Transfer channel-aggregated attention maps</td><td>2.2, 4.1</td></tr>
+<tr><td>OFD (Heo 2019a)</td><td>Distil pre-ReLU features with margin ReLU</td><td>2.2</td></tr>
+<tr><td>CWD</td><td>Channel-wise softmax + KL</td><td>2.2</td></tr>
+<tr><td>Knowledge Review</td><td>Student layer matches teacher layer + all earlier ones</td><td>2.2</td></tr>
+<tr><td>SemCKD</td><td>Learned weights between all student/teacher layer pairs</td><td>2.2</td></tr>
+<tr><td>MGD / MLP</td><td>Masked-generation vs. plain MLP projection of student features</td><td>2.2</td></tr>
+<tr><td>DiffKD</td><td>Diffusion model denoises student features toward teacher's</td><td>2.2, 4.1</td></tr>
+<tr><td>AttnFD</td><td>CBAM-refined features before MSE; helps small objects</td><td>2.2, 4.1</td></tr>
+<tr><td>FSP</td><td>Inner product between layers = "flow of solution procedure"</td><td>2.3</td></tr>
+<tr><td>RKD / SPKD</td><td>Distance &amp; angle relations / batch correlation between samples</td><td>2.3</td></tr>
+<tr><td>CIRKD</td><td>Global pixel/region relations via memory bank</td><td>2.3</td></tr>
+<tr><td>ICKD / IFVD</td><td>Channel correlation / pixel-to-class-prototype distances</td><td>2.3</td></tr>
+<tr><td>DIST</td><td>Inter- &amp; intra-class relations (correlation-based)</td><td>2.3</td></tr>
+<tr><td>DKD</td><td>Decouple target- vs non-target-class KD</td><td>2.1</td></tr>
+<tr><td>NormKD / logit standardization</td><td>Per-sample temperature / Z-score logits</td><td>2.1</td></tr>
+<tr><td>TAKD</td><td>Teaching-assistant intermediate-size teacher</td><td>4.6</td></tr>
+<tr><td>Born-Again Networks</td><td>Same architecture, re-initialized, learns from previous generation</td><td>3.3</td></tr>
+<tr><td>ARD / RSLAD</td><td>Student on perturbed inputs matches teacher on clean / robust soft labels</td><td>4.2.3</td></tr>
+<tr><td>CRD / WCoRD</td><td>Contrastive (InfoNCE-style) / Wasserstein feature alignment</td><td>4.7</td></tr>
+<tr><td>BYOL, MoCo, DINO</td><td>EMA teacher + student, self-distillation in SSL</td><td>6.3</td></tr>
+<tr><td>TinyBERT / DistilBERT / MiniLM / MobileBERT</td><td>BERT compression via logits / multi-level / last-layer attention / bottleneck + attention</td><td>6.1</td></tr>
+<tr><td>MiniLLM</td><td>Reverse KL for generative LLM distillation</td><td>6.1</td></tr>
+<tr><td>GKD</td><td>On-policy: train on student's own generated sequences</td><td>6.1</td></tr>
+<tr><td>Distilling step-by-step</td><td>Multi-task: predict label + rationale from teacher LLM</td><td>6.1</td></tr>
+<tr><td>Progressive distillation / DMD / consistency models</td><td>Halve steps repeatedly / one-step distribution matching / direct noise→clean</td><td>6.4</td></tr>
+</table></div>
+<p style="color:var(--mute);font-size:13px;margin-top:30px">These notes condense the main text (pp. 1–49). Details are paraphrased from the paper; citations are given as author-year as in the paper's own reference style. For exact table entries (Tables 6, 7, 11–17) consult the PDF.</p>
+</main>
+</div>
+</body>
+</html>
