@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gradient Descent Optimization Algorithms: A Textbook Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script>
+window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']], tags: 'none' }, options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] } };
+</script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-chtml.js"></script>
+<style>
+:root{
+  --paper:#F6F7F9; --panel:#FFFFFF; --ink:#17202E; --muted:#556070; --rule:#D6DBE3;
+  --blue:#274690; --teal:#1B7566; --amber:#8F5F00; --red:#A33A3A; --codebg:#EEF1F6;
+  --serif:'Newsreader',Georgia,'Times New Roman',serif;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{--paper:#11151C;--panel:#171C25;--ink:#E4E8EF;--muted:#9AA5B5;--rule:#2C3442;--blue:#8FB0FF;--teal:#5FD1BC;--amber:#E5B25A;--red:#F08A8A;--codebg:#1C2330;}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:1rem}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:19px;line-height:1.65}
+.layout{display:grid;grid-template-columns:290px minmax(0,1fr);max-width:1280px;margin:0 auto}
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:2rem 1.25rem 2rem 1.5rem;border-right:1px solid var(--rule);font-family:var(--sans);font-size:14px;line-height:1.4}
+nav.toc .book{font-weight:600;font-size:15px;margin-bottom:1rem}
+nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:.28rem 0}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--blue)}
+nav.toc a.sub{padding-left:1rem;font-size:13px}
+nav.toc .part{margin-top:1rem;font-weight:600;color:var(--ink)}
+main{padding:3rem 2.5rem 6rem;max-width:880px}
+header.title h1{font-family:var(--sans);font-weight:600;font-size:2.4rem;line-height:1.15;margin:0 0 .6rem;letter-spacing:-.01em}
+header.title p{color:var(--muted);margin:.2rem 0}
+h2{font-family:var(--sans);font-size:1.75rem;font-weight:600;margin:4rem 0 1rem;padding-top:1.5rem;border-top:2px solid var(--ink);line-height:1.2}
+h3{font-family:var(--sans);font-size:1.28rem;font-weight:600;margin:2.4rem 0 .6rem;line-height:1.3}
+h4{font-family:var(--sans);font-size:1.02rem;font-weight:600;margin:1.6rem 0 .3rem;color:var(--blue)}
+p{margin:.8rem 0}
+a{color:var(--blue)}
+ul,ol{padding-left:1.4rem}
+li{margin:.3rem 0}
+code{font-family:var(--mono);font-size:.82em;background:var(--codebg);padding:.1em .35em;border-radius:3px}
+pre{background:var(--codebg);padding:1rem 1.1rem;overflow-x:auto;border-radius:4px;font-size:14px;line-height:1.5;border:1px solid var(--rule)}
+pre code{background:none;padding:0;font-size:inherit}
+mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%;margin:1rem 0 !important}
+.box{margin:1.5rem 0;padding:.9rem 1.2rem;background:var(--panel);border-left:4px solid var(--blue);border-radius:0 4px 4px 0}
+.box>.t{font-family:var(--sans);font-weight:600;font-size:.92rem;margin-bottom:.25rem;display:block}
+.box p:first-of-type{margin-top:.2rem}.box p:last-child{margin-bottom:.2rem}
+.box.intuition{border-color:var(--teal)}.box.intuition>.t{color:var(--teal)}
+.box.pitfall{border-color:var(--amber)}.box.pitfall>.t{color:var(--amber)}
+.box.def{border-color:var(--blue)}.box.def>.t{color:var(--blue)}
+.box.beyond{border-color:var(--muted)}.box.beyond>.t{color:var(--muted)}
+.box.ex{border-color:var(--red)}.box.ex>.t{color:var(--red)}
+.eq-ref{font-family:var(--sans);font-size:.8rem;color:var(--muted)}
+table{border-collapse:collapse;width:100%;margin:1.2rem 0;font-family:var(--sans);font-size:14px;line-height:1.4}
+th,td{border-bottom:1px solid var(--rule);padding:.5rem .6rem;text-align:left;vertical-align:top}
+th{border-bottom:2px solid var(--ink);font-weight:600}
+.tw{overflow-x:auto}
+details{margin:.5rem 0}
+summary{cursor:pointer;font-family:var(--sans);font-size:.9rem;color:var(--blue)}
+summary:focus-visible,a:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.goals{background:var(--panel);padding:1rem 1.3rem;border:1px solid var(--rule);border-radius:4px}
+.goals ul{margin:.3rem 0}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}
+  nav.toc{position:static;height:auto;border-right:0;border-bottom:1px solid var(--rule)}
+  main{padding:2rem 1.1rem 4rem}
+  body{font-size:18px}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="Table of contents">
+  <div class="book">Gradient Descent Optimization Algorithms</div>
+  <a href="#ch0">0. Foundations and notation</a>
+  <a href="#ch1">1. Gradient descent and its variants</a>
+  <a href="#ch2">2. Challenges</a>
+  <div class="part">Optimizers</div>
+  <a href="#ch3">3. Momentum</a>
+  <a href="#ch4">4. Nesterov accelerated gradient</a>
+  <a href="#ch5">5. Adagrad</a>
+  <a href="#ch6">6. Adadelta</a>
+  <a href="#ch7">7. RMSprop</a>
+  <a href="#ch8">8. Adam</a>
+  <a href="#ch9">9. AdaMax</a>
+  <a href="#ch10">10. Nadam</a>
+  <div class="part">Practice</div>
+  <a href="#ch11">11. Behaviour on test surfaces</a>
+  <a href="#ch12">12. Which optimizer to use?</a>
+  <a href="#ch13">13. Parallel and distributed SGD</a>
+  <a href="#ch14">14. Additional strategies</a>
+  <a href="#ch15">15. Reference implementations</a>
+  <a href="#ch16">16. Beyond the paper</a>
+  <a href="#ch17">17. Summary and cheat sheet</a>
+  <a href="#ch18">18. Exercises</a>
+  <a href="#ch19">19. Glossary and references</a>
+</nav>
+
+<main>
+<header class="title">
+  <h1>Gradient Descent Optimization Algorithms</h1>
+  <p>A textbook companion to Sebastian Ruder, <em>An overview of gradient descent optimization algorithms</em> (arXiv:1609.04747).</p>
+  <p>Every optimizer in the paper is derived, motivated, and compared, with extra mathematics, worked examples, and pointers to the work that came after it.</p>
+</header>
+
+<div class="goals">
+<strong style="font-family:var(--sans)">How to use this text.</strong> You have already implemented these optimizers, so this book spends its effort on <em>why</em>. Each chapter states the problem the algorithm solves, derives the update rule, shows a small worked example, lists default hyperparameters, and names the failure modes. Colored boxes mark intuition (teal), definitions (blue), pitfalls (amber), material that goes beyond the paper (grey), and exercises (red). Math is rendered with MathJax, which loads from a CDN, so keep an internet connection for the first view.
+</div>
+
+<!-- ============================================================ -->
+<h2 id="ch0">0. Foundations and notation</h2>
+
+<h3>0.1 The optimization problem</h3>
+<p>Training a model means choosing parameters \(\theta \in \mathbb{R}^d\) that minimize an objective (loss, cost) function \(J(\theta)\). For supervised learning with a dataset \(\{(x^{(i)},y^{(i)})\}_{i=1}^{N}\) the objective is usually an average of per-example losses:</p>
+\[ J(\theta) = \frac{1}{N}\sum_{i=1}^{N} \ell\big(f_\theta(x^{(i)}), y^{(i)}\big). \]
+<p>For a deep network \(d\) can be millions or billions, \(N\) can be millions, and \(J\) is non-convex. We cannot solve \(\nabla J(\theta)=0\) in closed form, so we use <em>iterative</em> methods: start at \(\theta_0\) and generate a sequence \(\theta_1,\theta_2,\dots\) that, we hope, drives \(J\) down.</p>
+
+<h3>0.2 Gradient, Hessian, and the local picture</h3>
+<div class="box def"><span class="t">Definitions</span>
+<p><strong>Gradient</strong> \(\nabla_\theta J(\theta)\in\mathbb{R}^d\): the vector of partial derivatives \(\partial J/\partial\theta_i\). It points in the direction of steepest local <em>increase</em> of \(J\).</p>
+<p><strong>Hessian</strong> \(H(\theta)\in\mathbb{R}^{d\times d}\), \(H_{ij}=\partial^2 J/\partial\theta_i\partial\theta_j\): the curvature. Its eigenvalues tell you how steeply the surface bends along each eigen-direction.</p>
+<p><strong>Learning rate (step size)</strong> \(\eta>0\): the scalar that scales each step.</p>
+</div>
+<p>Near a point \(\theta\), a second-order Taylor expansion gives the model every optimizer in this book implicitly reasons about:</p>
+\[ J(\theta+\Delta) \approx J(\theta) + \nabla J(\theta)^\top \Delta + \tfrac12 \Delta^\top H(\theta)\,\Delta. \]
+<p>First-order methods (everything in the paper) use only the gradient term. Second-order methods such as Newton's method also use \(H\), but forming and inverting a \(d\times d\) matrix is infeasible for large \(d\), which is why the paper excludes them.</p>
+
+<h3>0.3 Convexity, minima, saddle points</h3>
+<p>A function is <strong>convex</strong> if the line segment between any two points on its graph lies above the graph. A convex function has no suboptimal local minima: every local minimum is global. Neural network losses are <strong>non-convex</strong>, so they contain local minima, plateaus, and saddle points.</p>
+<p>At a <strong>critical point</strong> (\(\nabla J=0\)) the Hessian's eigenvalues classify it: all positive means a local minimum, all negative a local maximum, mixed signs a <strong>saddle point</strong>. In high dimensions, mixed signs are overwhelmingly more common than all-positive, which is the observation of Dauphin et al. that the paper cites.</p>
+
+<h3>0.4 Condition number</h3>
+<p>For a quadratic bowl \(J(\theta)=\tfrac12\theta^\top A\theta\) with eigenvalues \(\lambda_{\min}\le\dots\le\lambda_{\max}\), the <strong>condition number</strong> is \(\kappa=\lambda_{\max}/\lambda_{\min}\). A large \(\kappa\) means a long narrow valley, which is the "ravine" of the paper. Many results below are stated in terms of \(\kappa\), since it controls how hard the problem is for first-order methods.</p>
+
+<h3>0.5 Exponential moving averages (EMA)</h3>
+<p>Momentum, Adadelta, RMSprop, Adam, AdaMax, and Nadam all rely on an <strong>exponential moving average</strong>:</p>
+\[ a_t = \beta\, a_{t-1} + (1-\beta)\, x_t,\qquad a_0=0. \]
+<p>Unrolling gives \(a_t=(1-\beta)\sum_{k=0}^{t-1}\beta^{k}x_{t-k}\): recent values get exponentially larger weight. The weights sum to \(1-\beta^t\), which approaches 1. The effective window length is about \(1/(1-\beta)\) steps, so \(\beta=0.9\) averages over roughly 10 steps and \(\beta=0.999\) over roughly 1000. The fact that the weights sum to \(1-\beta^t\) rather than 1 early on is exactly why Adam needs bias correction (Chapter 8).</p>
+
+<h3>0.6 Notation used in this book</h3>
+<div class="tw"><table>
+<tr><th>Symbol</th><th>Meaning</th></tr>
+<tr><td>\(\theta_t\)</td><td>parameters at step \(t\)</td></tr>
+<tr><td>\(g_t=\nabla_\theta J(\theta_t)\)</td><td>(mini-batch) gradient at step \(t\)</td></tr>
+<tr><td>\(\eta\)</td><td>learning rate</td></tr>
+<tr><td>\(\gamma\)</td><td>momentum or decay coefficient in Momentum, NAG, Adadelta, RMSprop</td></tr>
+<tr><td>\(\beta_1,\beta_2\)</td><td>decay rates for first and second moments in Adam-family methods</td></tr>
+<tr><td>\(\epsilon\)</td><td>small constant for numerical stability (about \(10^{-8}\))</td></tr>
+<tr><td>\(\odot\)</td><td>element-wise product; all divisions and square roots of vectors are element-wise</td></tr>
+<tr><td>\(E[g^2]_t\)</td><td>running (exponential) average of squared gradients</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="ch1">1. Gradient descent and its variants</h2>
+
+<h3>1.1 Where the update rule comes from</h3>
+<p>Take a step \(\Delta\) of fixed small length \(\|\Delta\|=\rho\). By the first-order Taylor expansion, \(J(\theta+\Delta)\approx J(\theta)+\nabla J^\top\Delta\). The step that makes the right-hand side smallest is the one anti-parallel to the gradient, \(\Delta=-\rho\,\nabla J/\|\nabla J\|\). Gradient descent drops the normalization and lets the gradient's own magnitude set the step, scaled by \(\eta\):</p>
+\[ \theta \leftarrow \theta - \eta\,\nabla_\theta J(\theta). \qquad (\text{paper Eq. 1}) \]
+<p>The learning rate \(\eta\) is needed because the Taylor model is only valid locally: a step that is too long leaves the region where the linear approximation is trustworthy.</p>
+
+<h3>1.2 Gradient descent on a quadratic: a complete analysis</h3>
+<p>Let \(J(\theta)=\tfrac12\theta^\top A\theta\) with \(A\) symmetric positive definite, minimum at \(0\). Then \(\nabla J=A\theta\) and the update is \(\theta_{t+1}=(I-\eta A)\theta_t\). In the eigenbasis of \(A\), each coordinate evolves independently:</p>
+\[ \theta^{(i)}_{t} = (1-\eta\lambda_i)^t\,\theta^{(i)}_0. \]
+<p>Consequences you should internalize:</p>
+<ul>
+<li><strong>Stability:</strong> convergence requires \(|1-\eta\lambda_i|<1\) for every \(i\), i.e. \(\eta<2/\lambda_{\max}\). Above that, the steepest direction diverges.</li>
+<li><strong>Slow direction:</strong> the flattest direction contracts by \(1-\eta\lambda_{\min}\) per step. With \(\eta\) pinned below \(2/\lambda_{\max}\), progress there is of order \(\lambda_{\min}/\lambda_{\max}=1/\kappa\) per step.</li>
+<li><strong>Best fixed step:</strong> \(\eta^\star=2/(\lambda_{\max}+\lambda_{\min})\), giving a per-step contraction of \((\kappa-1)/(\kappa+1)\). Reaching accuracy \(\varepsilon\) needs on the order of \(\kappa\log(1/\varepsilon)\) iterations.</li>
+</ul>
+<div class="box intuition"><span class="t">Intuition: the ravine is a conditioning problem</span>
+<p>One learning rate must serve every direction. The steep direction forces it to be small, so the shallow direction crawls. Momentum, adaptive learning rates, and second-order methods are three different ways of escaping this single-learning-rate constraint. Keep this picture in mind through the rest of the book.</p></div>
+<p>For general smooth non-convex \(J\) with \(L\)-Lipschitz gradients, the <em>descent lemma</em> says \(J(\theta-\eta g)\le J(\theta)-\eta(1-\tfrac{L\eta}{2})\|g\|^2\), so any \(\eta<2/L\) decreases the loss at every step, and \(\eta=1/L\) is a standard safe choice. Here \(L\) plays the role of \(\lambda_{\max}\).</p>
+
+<h3>1.3 Batch gradient descent</h3>
+<p>Batch (vanilla) gradient descent computes the exact gradient on the whole training set before each update:</p>
+\[ \theta = \theta - \eta\cdot\nabla_\theta J(\theta). \]
+<pre><code>for i in range(nb_epochs):
+    params_grad = evaluate_gradient(loss_function, data, params)
+    params = params - learning_rate * params_grad</code></pre>
+<p><strong>Properties.</strong></p>
+<ul>
+<li>One update costs a full pass over \(N\) examples, so it is slow and cannot work when the data do not fit in memory.</li>
+<li>It cannot learn online (new examples arriving on the fly).</li>
+<li>Its gradient is exact and deterministic, so with a suitable \(\eta\) it converges to the global minimum for convex objectives and to a local minimum (or stationary point) for non-convex ones.</li>
+<li>For large datasets it is wasteful: many examples are near-duplicates, so the gradient is recomputed redundantly before every update.</li>
+</ul>
+<p><strong>Gradient checking.</strong> When you derive gradients by hand, compare against the centered finite difference \((J(\theta+h e_i)-J(\theta-h e_i))/2h\) with \(h\approx10^{-5}\). Automatic differentiation makes this rarely necessary but it remains the best test for custom layers and losses.</p>
+
+<h3>1.4 Stochastic gradient descent (SGD)</h3>
+<p>SGD updates after every single example:</p>
+\[ \theta = \theta - \eta\cdot\nabla_\theta J\big(\theta;x^{(i)};y^{(i)}\big). \qquad (\text{paper Eq. 2}) \]
+<pre><code>for i in range(nb_epochs):
+    np.random.shuffle(data)
+    for example in data:
+        params_grad = evaluate_gradient(loss_function, example, params)
+        params = params - learning_rate * params_grad</code></pre>
+<p><strong>Why it works.</strong> If example \(i\) is drawn uniformly at random, the single-example gradient is an <em>unbiased estimator</em> of the full gradient: \(\mathbb{E}_i[\nabla\ell_i(\theta)]=\nabla J(\theta)\). On average, SGD steps point the same way as batch steps, only noisily.</p>
+<p><strong>Cost and noise.</strong> Each step is \(N\) times cheaper, so SGD makes many more updates per unit of compute and can learn online. But the single-example gradient has high variance, so the objective fluctuates heavily (paper Figure 1).</p>
+<p><strong>Two-sided effect of noise.</strong></p>
+<ul>
+<li><em>Good:</em> the noise can kick the parameters out of a shallow basin into a potentially better one, and helps escape saddle regions.</li>
+<li><em>Bad:</em> near a minimum the noise never vanishes, so the iterates keep jittering and overshooting around it instead of settling.</li>
+</ul>
+<p><strong>Convergence theory.</strong> The classical Robbins-Monro conditions for stochastic approximation require a decreasing step-size sequence satisfying</p>
+\[ \sum_t \eta_t = \infty,\qquad \sum_t \eta_t^2 < \infty. \]
+<p>The first lets the iterates travel arbitrarily far; the second makes the accumulated noise finite. For example \(\eta_t\propto 1/t\) qualifies. Under such a schedule SGD converges almost surely to the global (convex case) or a local (non-convex case) minimum, matching batch gradient descent, as the paper states. In practice we use schedules that decay more slowly or in steps (Section 14.7).</p>
+<p><strong>Shuffling.</strong> The data are reshuffled each epoch so that updates are not correlated with any ordering in the dataset (Section 14.1).</p>
+
+<h3>1.5 Mini-batch gradient descent</h3>
+<p>Mini-batch gradient descent compromises: update once per mini-batch of \(n\) examples.</p>
+\[ \theta = \theta - \eta\cdot\nabla_\theta J\big(\theta; x^{(i:i+n)}; y^{(i:i+n)}\big). \qquad (\text{paper Eq. 3}) \]
+<pre><code>for i in range(nb_epochs):
+    np.random.shuffle(data)
+    for batch in get_batches(data, batch_size=50):
+        params_grad = evaluate_gradient(loss_function, batch, params)
+        params = params - learning_rate * params_grad</code></pre>
+<p><strong>Benefits.</strong></p>
+<ol>
+<li><em>Lower variance.</em> Averaging \(n\) independent per-example gradients divides the variance of the gradient estimate by \(n\) (the standard error shrinks like \(1/\sqrt n\)), giving more stable convergence.</li>
+<li><em>Hardware efficiency.</em> A mini-batch gradient is a matrix-matrix computation that GPUs and optimized BLAS libraries execute far faster than \(n\) separate vector computations.</li>
+</ol>
+<p>The paper cites typical sizes of 50 to 256; modern training often uses much larger batches. Note the diminishing returns: past some "critical batch size" extra examples reduce variance that is already small compared with the signal, and cost compute for little gain. Larger batches usually need a larger learning rate (a common heuristic is to scale \(\eta\) with batch size) and often a warm-up period.</p>
+<div class="box pitfall"><span class="t">Terminology trap</span>
+<p>The paper notes that "SGD" nearly always means mini-batch SGD in deep learning, and from here on it drops the \(x^{(i:i+n)},y^{(i:i+n)}\) arguments. Framework optimizers named <code>SGD</code> always receive whatever batch your data loader supplies.</p></div>
+
+<h3>1.6 Comparison</h3>
+<div class="tw"><table>
+<tr><th></th><th>Batch</th><th>Stochastic</th><th>Mini-batch</th></tr>
+<tr><td>Examples per update</td><td>\(N\)</td><td>1</td><td>\(n\) (e.g. 32 to 256+)</td></tr>
+<tr><td>Gradient noise</td><td>none</td><td>highest</td><td>moderate, \(\propto 1/\sqrt n\)</td></tr>
+<tr><td>Cost per update</td><td>highest</td><td>lowest</td><td>moderate</td></tr>
+<tr><td>Hardware utilization</td><td>good if it fits</td><td>poor</td><td>good</td></tr>
+<tr><td>Online learning</td><td>no</td><td>yes</td><td>yes</td></tr>
+<tr><td>Can escape shallow minima</td><td>rarely</td><td>often</td><td>sometimes</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="ch2">2. Challenges</h2>
+<p>Even mini-batch SGD does not guarantee good convergence. The paper lists four challenges, and each optimizer in the following chapters is a response to one or more of them.</p>
+<ol>
+<li><strong>Choosing the learning rate.</strong> Too small: painfully slow progress. Too large: the loss oscillates around the minimum or diverges (as the quadratic analysis showed, \(\eta>2/\lambda_{\max}\) diverges). The best value is problem-dependent and changes during training.</li>
+<li><strong>Fixed schedules.</strong> Learning-rate schedules (annealing) reduce \(\eta\) on a pre-defined plan or when the loss improvement per epoch drops below a threshold. But the plan and thresholds are fixed in advance, so they cannot adapt to the data.</li>
+<li><strong>One learning rate for all parameters.</strong> With sparse data and features of very different frequencies, rarely active features receive few gradient signals and deserve larger updates, while frequent ones deserve smaller ones.</li>
+<li><strong>Non-convexity: local minima and saddle points.</strong> Dauphin et al. argue the real difficulty is not poor local minima but <em>saddle points</em>, where one direction curves up and another curves down. They are usually surrounded by a plateau of nearly constant error, so the gradient is close to zero in all directions and SGD stalls.</li>
+</ol>
+<div class="box intuition"><span class="t">Map from problem to solution</span>
+<p>Ravines and oscillation lead to Momentum and NAG. Per-parameter learning rates and sparse features lead to Adagrad, then to its repairs Adadelta and RMSprop, then to Adam, AdaMax, and Nadam, which fold in momentum. Plateaus and saddles are helped by momentum, adaptive scaling, and gradient noise. Fixed schedules are partly sidestepped by adaptivity (Chapter 14 and Section 16.1 return to schedules).</p></div>
+
+<!-- ============================================================ -->
+<h2 id="ch3">3. Momentum</h2>
+
+<h3>3.1 The problem</h3>
+<p>In a ravine, the gradient has a large component across the narrow walls and a tiny component along the floor toward the optimum. Plain SGD therefore zig-zags across the walls and makes "hesitant progress" along the bottom (paper Figure 2a). This is the conditioning problem of Section 1.2 in action.</p>
+
+<h3>3.2 The update</h3>
+<p>Momentum (Qian, 1999; related to Polyak's heavy-ball method) keeps a velocity \(v\) that is a decaying accumulation of past updates:</p>
+\[ v_t = \gamma\,v_{t-1} + \eta\,\nabla_\theta J(\theta),\qquad \theta = \theta - v_t. \qquad (\text{paper Eq. 4}) \]
+<p>The coefficient \(\gamma\in[0,1)\) is usually 0.9 (also seen: 0.5 early in training rising to 0.99). With \(\gamma=0\) this is plain SGD.</p>
+<div class="box pitfall"><span class="t">Sign and scaling conventions</span>
+<p>Footnote 8 of the paper warns that some implementations flip signs (store \(v\) as the negative update and add it). There is also a scaling difference: PyTorch's <code>SGD</code> computes \(v_t=\gamma v_{t-1}+g_t\) and then steps by \(\eta v_t\), putting the learning rate outside the velocity. The two forms are identical when \(\eta\) is constant but differ if you change \(\eta\) mid-training. Always check which one your framework uses before comparing to the paper.</p></div>
+
+<h3>3.3 Unrolling: what momentum really computes</h3>
+<p>Expanding the recursion with \(v_0=0\):</p>
+\[ v_t = \eta\sum_{k=0}^{t-1}\gamma^{k}\,g_{t-k}. \]
+<p>The update is an exponentially weighted sum of all past gradients. Two consequences:</p>
+<ul>
+<li><strong>Consistent gradients add up.</strong> If \(g\) is constant, \(v_\infty=\eta g/(1-\gamma)\). With \(\gamma=0.9\) the effective step is 10 times larger than SGD's along persistently consistent directions: the "ball accelerating downhill".</li>
+<li><strong>Oscillating gradients cancel.</strong> Components that alternate in sign (the cross-ravine component) largely sum to zero, so the oscillation is damped.</li>
+</ul>
+<p>This is exactly the paper's statement that the momentum term "increases for dimensions whose gradients point in the same directions and reduces updates for dimensions whose gradients change directions". It also means a smaller \(\eta\) is usually appropriate when \(\gamma\) is large, since the effective rate is \(\eta/(1-\gamma)\).</p>
+
+<h3>3.4 Why it is faster: the quadratic analysis</h3>
+<p>On a quadratic with condition number \(\kappa\), gradient descent with its best step contracts at rate \((\kappa-1)/(\kappa+1)\) per iteration, needing \(O(\kappa)\) iterations. Heavy-ball momentum with tuned \(\eta,\gamma\) achieves rate \((\sqrt\kappa-1)/(\sqrt\kappa+1)\), needing only \(O(\sqrt\kappa)\) iterations. For \(\kappa=10{,}000\) that is the difference between roughly 10,000 and roughly 100 iterations (up to constants). Momentum therefore does not merely smooth noise, it reduces the dependence on the conditioning from \(\kappa\) to \(\sqrt\kappa\).</p>
+<p>Physically, \(\gamma<1\) acts like friction: the "terminal velocity" is finite, and the ball can still overshoot and oscillate when \(\gamma\) is too close to 1, which is why 0.9 rather than 0.999.</p>
+
+<h3>3.5 Worked example</h3>
+<p>One-dimensional \(J(\theta)=\tfrac12\cdot 10\,\theta^2\), start \(\theta_0=1\), \(\eta=0.15\), \(\gamma=0.9\). Gradient \(=10\theta\).</p>
+<ul>
+<li>Step 1: \(g=10\), \(v_1=0.9\cdot0+0.15\cdot10=1.5\), \(\theta_1=1-1.5=-0.5\). (SGD alone would give \(\theta_1=-0.5\) too: \(\eta\lambda=1.5\), a big overshoot.)</li>
+<li>Step 2: \(g=-5\), \(v_2=0.9\cdot1.5+0.15\cdot(-5)=1.35-0.75=0.6\), \(\theta_2=-0.5-0.6=-1.1\). The velocity pushes past zero again.</li>
+</ul>
+<p>Here \(\eta\lambda=1.5\) is large, so momentum overshoots and oscillates around the minimum. The iteration is still stable, because heavy-ball momentum on a quadratic is stable when \(0<\eta\lambda<2(1+\gamma)=3.8\), but the oscillation decays only slowly. This shows that \(\eta\) and \(\gamma\) interact: a large \(\gamma\) calls for a smaller \(\eta\).</p>
+
+<h3>3.6 Summary</h3>
+<div class="box def"><span class="t">Momentum at a glance</span>
+<p><strong>State:</strong> one velocity vector per parameter (doubles optimizer memory). <strong>Hyperparameters:</strong> \(\eta\), \(\gamma\approx0.9\). <strong>Fixes:</strong> ravines, oscillation, slow progress on plateaus. <strong>Weakness:</strong> it follows the slope blindly and can overshoot a minimum, the problem NAG addresses.</p></div>
+
+<!-- ============================================================ -->
+<h2 id="ch4">4. Nesterov accelerated gradient (NAG)</h2>
+
+<h3>4.1 Motivation: a ball that looks ahead</h3>
+<p>A momentum ball rolls down a hill blindly. When it reaches the bottom it is moving fast and overshoots up the other side before the gradient has had time to slow it. We would like a ball that knows approximately where it is going and brakes before the slope turns upward.</p>
+
+<h3>4.2 The update</h3>
+<p>We know the momentum term \(\gamma v_{t-1}\) will move the parameters regardless of what the gradient says. So \(\theta-\gamma v_{t-1}\) is a good estimate of where we will be next. NAG evaluates the gradient there:</p>
+\[ v_t = \gamma\,v_{t-1} + \eta\,\nabla_\theta J(\theta - \gamma v_{t-1}),\qquad \theta=\theta-v_t. \qquad (\text{paper Eq. 5}) \]
+<p>Compare the two methods (paper Figure 3):</p>
+<ul>
+<li><strong>Momentum:</strong> compute the gradient at the current point (small blue vector), then jump along the updated accumulated gradient (big blue vector).</li>
+<li><strong>NAG:</strong> first jump along the previous accumulated gradient (brown vector), measure the gradient at that look-ahead point, and apply a correction (green vector).</li>
+</ul>
+<p>If the look-ahead point has already crossed to the uphill side of the valley, the gradient there points back, so the correction brakes the motion early. The paper notes this responsiveness significantly improved RNN training on several tasks.</p>
+
+<h3>4.3 An implementation-friendly form</h3>
+<p>The formula above needs the gradient at a point that is not the stored parameter vector, which is awkward in frameworks. Define the look-ahead point \(\phi_t=\theta_t-\gamma v_{t-1}\) and store \(\phi\) instead. Substituting \(\theta_{t+1}=\theta_t-v_t\) and simplifying gives</p>
+\[ v_t=\gamma v_{t-1}+\eta\,\nabla J(\phi_t),\qquad \phi_{t+1}=\phi_t-\gamma v_t-\eta\,\nabla J(\phi_t). \]
+<p>Now the gradient is taken at the stored vector. This is essentially how common frameworks implement "Nesterov" momentum, and it is also the form that suggests Nadam's construction (Chapter 10): the update is the gradient step plus the <em>current</em> velocity. Recovering the true \(\theta_t\) afterwards only requires \(\theta_t=\phi_t+\gamma v_{t-1}\).</p>
+
+<h3>4.4 Theory</h3>
+<p>Nesterov's original 1983 method (reference [14]) is a landmark of convex optimization: for smooth convex functions it attains an \(O(1/k^2)\) rate, versus \(O(1/k)\) for gradient descent, and this is optimal among first-order methods. The theoretical guarantee depends on a specific schedule for the momentum coefficient (it grows toward 1), whereas deep-learning practice usually fixes \(\gamma\approx0.9\); the benefits in practice are more modest but real.</p>
+<div class="box def"><span class="t">NAG at a glance</span>
+<p><strong>State:</strong> one velocity vector. <strong>Hyperparameters:</strong> \(\eta\), \(\gamma\approx0.9\). <strong>Fixes:</strong> overshooting of Momentum. <strong>Costs:</strong> no extra gradient evaluation, if you use the reformulated version.</p></div>
+<p>The paper closes this part with the transition: we can now adapt updates to the slope and speed up SGD, but we also want to adapt them to <em>each parameter</em>.</p>
+
+<!-- ============================================================ -->
+<h2 id="ch5">5. Adagrad</h2>
+
+<h3>5.1 Motivation</h3>
+<p>Take a model with sparse inputs, such as a bag-of-words or embedding model. The word "the" is active in nearly every example and receives a gradient on every step; the word "cryptography" appears a handful of times in a million examples. With one global learning rate, the rare word's weights barely move. We want large updates for infrequent parameters and small updates for frequent ones. Adagrad (Duchi et al., 2011) does this automatically.</p>
+<p>Evidence from the paper: Dean et al. found Adagrad greatly improved the robustness of SGD when training Google's large-scale network that learned to recognize cats in YouTube videos, and Pennington et al. used it to train GloVe embeddings, because infrequent words need much larger updates than frequent ones.</p>
+
+<h3>5.2 Per-parameter derivation</h3>
+<p>Write \(g_{t,i}=\nabla_{\theta_i}J(\theta_{t})\) for the gradient with respect to parameter \(\theta_i\) at step \(t\). Plain SGD is</p>
+\[ \theta_{t+1,i}=\theta_{t,i}-\eta\,g_{t,i}. \qquad(\text{paper Eq. 7}) \]
+<p>Adagrad divides the learning rate by the root of the sum of all past squared gradients of that parameter:</p>
+\[ \theta_{t+1,i}=\theta_{t,i}-\frac{\eta}{\sqrt{G_{t,ii}+\epsilon}}\,g_{t,i},\qquad G_{t,ii}=\sum_{\tau=1}^{t}g_{\tau,i}^2. \qquad(\text{paper Eq. 8}) \]
+<p>Here \(G_t\in\mathbb{R}^{d\times d}\) is a diagonal matrix whose \(i\)-th diagonal entry is that sum. Vectorized, with \(\odot\) element-wise multiplication:</p>
+\[ \theta_{t+1}=\theta_t-\frac{\eta}{\sqrt{G_t+\epsilon}}\odot g_t. \qquad(\text{paper Eq. 9}) \]
+<p>Implementation form: keep a vector <code>G += g*g</code>, then <code>theta -= eta * g / (sqrt(G) + eps)</code>.</p>
+<div class="box pitfall"><span class="t">Where does epsilon go?</span>
+<p>The paper writes \(\epsilon\) inside the square root. Many libraries put it outside, \(\sqrt{G}+\epsilon\). The difference is negligible for large \(G\) but changes the very first steps when \(G\) is tiny. It also matters for Adam-family methods at small \(v\). If you replicate results from a paper, match its convention.</p></div>
+
+<h3>5.3 Why the square root?</h3>
+<p>The paper remarks that without the square root the algorithm "performs much worse". The root makes the denominator have the same units as the gradient itself (it is like an RMS of the gradient history), so the step is dimensionally \(\eta\times\text{(unitless ratio)}\). Without it, the effective rate would scale like \(1/\text{sum of squares}\), which shrinks far too fast and has the wrong scale. Duchi et al. also show the root arises naturally in their regret analysis, where the proximal function is a Mahalanobis-type norm built from the gradient history. They remark that the full-matrix version (with outer products of all previous gradients) is infeasible, since it needs a matrix square root of a \(d\times d\) matrix, so the diagonal version is the one used.</p>
+
+<h3>5.4 Worked example</h3>
+<p>Two parameters, \(\eta=0.1\), \(\epsilon\) ignored. Parameter \(a\) is frequent: gradients \(1,1,1,1\). Parameter \(b\) is rare: gradients \(0,0,0,1\).</p>
+<div class="tw"><table>
+<tr><th>step</th><th>\(G_a\)</th><th>step for a</th><th>\(G_b\)</th><th>step for b</th></tr>
+<tr><td>1</td><td>1</td><td>\(0.1\cdot1/1=0.100\)</td><td>0</td><td>0</td></tr>
+<tr><td>2</td><td>2</td><td>\(0.1/\sqrt2=0.071\)</td><td>0</td><td>0</td></tr>
+<tr><td>3</td><td>3</td><td>\(0.1/\sqrt3=0.058\)</td><td>0</td><td>0</td></tr>
+<tr><td>4</td><td>4</td><td>\(0.1/2=0.050\)</td><td>1</td><td>\(0.1\cdot1/1=0.100\)</td></tr>
+</table></div>
+<p>At step 4 the rare parameter's first gradient produces a step twice as large as the frequent parameter's, even though both gradients equal 1. That is the whole idea.</p>
+
+<h3>5.5 Strengths and the fatal flaw</h3>
+<p><strong>Strength.</strong> The learning rate need not be tuned manually; most implementations use 0.01 and leave it. It handles sparse data well.</p>
+<p><strong>Weakness.</strong> The accumulator \(G_t\) only grows, since every term is positive. Therefore the effective learning rate \(\eta/\sqrt{G_t}\) decreases monotonically and eventually becomes vanishingly small, at which point the algorithm "is no longer able to acquire additional knowledge". For a long training run on non-convex problems this is a serious drawback, since early large gradients permanently shrink the step size for that parameter. Adadelta and RMSprop were designed to repair exactly this.</p>
+<div class="box def"><span class="t">Adagrad at a glance</span>
+<p><strong>State:</strong> one accumulator vector. <strong>Hyperparameters:</strong> \(\eta\approx0.01\), \(\epsilon\approx10^{-8}\). <strong>Fixes:</strong> per-parameter rates, sparse features. <strong>Weakness:</strong> monotonically vanishing learning rate.</p></div>
+
+<!-- ============================================================ -->
+<h2 id="ch6">6. Adadelta</h2>
+
+<h3>6.1 Idea 1: replace the sum by a decaying average</h3>
+<p>Adadelta (Zeiler, 2012) first restricts the accumulation to a window of the last \(w\) squared gradients. Storing \(w\) values per parameter is wasteful, so it is implemented as an exponential moving average of squared gradients:</p>
+\[ E[g^2]_t=\gamma\,E[g^2]_{t-1}+(1-\gamma)\,g_t^2. \qquad(\text{paper Eq. 10}) \]
+<p>\(\gamma\) is set like the momentum coefficient, about 0.9. The denominator no longer grows without bound, since old gradients are forgotten, so the learning rate cannot shrink to zero.</p>
+<p>Writing updates as \(\Delta\theta_t\) with \(\theta_{t+1}=\theta_t+\Delta\theta_t\), SGD has \(\Delta\theta_t=-\eta g_t\) and Adagrad has \(\Delta\theta_t=-\frac{\eta}{\sqrt{G_t+\epsilon}}\odot g_t\). Replacing \(G_t\) with \(E[g^2]_t\):</p>
+\[ \Delta\theta_t=-\frac{\eta}{\sqrt{E[g^2]_t+\epsilon}}\,g_t=-\frac{\eta}{\mathrm{RMS}[g]_t}\,g_t, \qquad \mathrm{RMS}[g]_t=\sqrt{E[g^2]_t+\epsilon}. \qquad(\text{Eqs. 13, 14}) \]
+
+<h3>6.2 Idea 2: fix the units</h3>
+<p>Zeiler observes that in SGD, Momentum, and Adagrad the update does not have the same units as the parameter. If \(\theta\) has some unit, \(g\propto\partial J/\partial\theta\) has units of \(J/\theta\), so \(\Delta\theta\propto g\) has units of \(J/\theta\), not \(\theta\). Newton's method, by contrast, has \(\Delta\theta\propto H^{-1}g\), with \(H\sim\partial^2J/\partial\theta^2\), giving \((J/\theta)/(J/\theta^2)=\theta\): units match. Inspired by this, Adadelta approximates the missing inverse-curvature factor using the ratio of the RMS of previous updates to the RMS of gradients (the "unit" \(\theta\) over the "unit" \(J/\theta\)).</p>
+<p>Define a second moving average, this time of squared <em>updates</em>:</p>
+\[ E[\Delta\theta^2]_t=\gamma\,E[\Delta\theta^2]_{t-1}+(1-\gamma)\,\Delta\theta_t^2,\qquad \mathrm{RMS}[\Delta\theta]_t=\sqrt{E[\Delta\theta^2]_t+\epsilon}. \qquad(\text{Eqs. 15, 16}) \]
+<p>\(\mathrm{RMS}[\Delta\theta]_t\) is unknown at the time we compute step \(t\), since it includes the update we are computing. So use the previous value \(\mathrm{RMS}[\Delta\theta]_{t-1}\). The learning rate \(\eta\) is replaced by this quantity:</p>
+\[ \Delta\theta_t=-\frac{\mathrm{RMS}[\Delta\theta]_{t-1}}{\mathrm{RMS}[g]_t}\,g_t,\qquad \theta_{t+1}=\theta_t+\Delta\theta_t. \qquad(\text{paper Eq. 17}) \]
+<p>The learning rate has been eliminated from the rule.</p>
+
+<h3>6.3 Behaviour and practical details</h3>
+<ul>
+<li><strong>Initial steps.</strong> \(E[\Delta\theta^2]_0=0\), so the numerator is \(\sqrt\epsilon\) at the first step. That is why \(\epsilon\) is not merely a safety constant here, it sets the initial step scale (values like \(10^{-6}\) are common for Adadelta rather than \(10^{-8}\)).</li>
+<li><strong>Self-regulating.</strong> If recent updates were large, the numerator is large, permitting large steps; if updates have been tiny, the step stays tiny. It acts like a per-parameter acceleration term, somewhat akin to momentum.</li>
+<li><strong>In practice,</strong> libraries expose an optional <code>lr</code> (default 1.0) that multiplies the whole update, so you can still scale the step.</li>
+</ul>
+<div class="box def"><span class="t">Adadelta at a glance</span>
+<p><strong>State:</strong> two vectors per parameter, \(E[g^2]\) and \(E[\Delta\theta^2]\). <strong>Hyperparameters:</strong> \(\gamma\approx0.9\), \(\epsilon\) (plus optional lr scale). <strong>Fixes:</strong> Adagrad's vanishing rate; unit mismatch. <strong>Uses no explicit learning rate.</strong></p></div>
+
+<!-- ============================================================ -->
+<h2 id="ch7">7. RMSprop</h2>
+<p>RMSprop is an unpublished method proposed by Geoff Hinton in Lecture 6e of his Coursera course. It was developed independently of Adadelta at about the same time, for the same reason: Adagrad's radically diminishing learning rates. It is identical to the <em>first</em> Adadelta idea (decaying average of squared gradients) and omits the unit-correcting numerator:</p>
+\[ E[g^2]_t=0.9\,E[g^2]_{t-1}+0.1\,g_t^2,\qquad \theta_{t+1}=\theta_t-\frac{\eta}{\sqrt{E[g^2]_t+\epsilon}}\,g_t. \qquad(\text{paper Eq. 18}) \]
+<p>Hinton suggests \(\gamma=0.9\) and a default \(\eta=0.001\).</p>
+
+<h3>7.1 Interpretation</h3>
+<p>RMSprop divides each gradient component by a running estimate of its typical magnitude. The step becomes roughly \(\eta\cdot g/\mathrm{RMS}(g)\), a quantity of order \(\eta\) regardless of gradient scale. Parameters with consistently large gradients are slowed, and parameters with small gradients are sped up, equalizing progress across dimensions. In ravine terms, the steep cross-ravine direction (large gradients) is damped and the shallow along-ravine direction (small gradients) is amplified, which directly attacks the conditioning problem. A good mental picture: RMSprop is a crude, diagonal, running estimate of the preconditioner that Newton's method would supply.</p>
+<div class="box pitfall"><span class="t">Variants to be aware of</span>
+<p>Some implementations add momentum to RMSprop, or offer a "centered" variant that divides by the standard deviation \(\sqrt{E[g^2]-E[g]^2}\) instead of the uncentered RMS. The decay constant is named <code>alpha</code> in PyTorch and <code>rho</code> in Keras. Check the mapping before reproducing results.</p></div>
+<div class="box def"><span class="t">RMSprop at a glance</span>
+<p><strong>State:</strong> one vector. <strong>Hyperparameters:</strong> \(\eta=10^{-3}\), \(\gamma=0.9\), \(\epsilon\). <strong>Relationship:</strong> Adagrad with exponential forgetting; Adadelta without the units correction.</p></div>
+
+<!-- ============================================================ -->
+<h2 id="ch8">8. Adam</h2>
+
+<h3>8.1 The idea</h3>
+<p>Adaptive Moment Estimation (Kingma and Ba, 2015) combines two tracked statistics of the gradient. Like RMSprop it keeps an EMA of squared gradients \(v_t\); like Momentum it keeps an EMA of gradients \(m_t\):</p>
+\[ m_t=\beta_1 m_{t-1}+(1-\beta_1)g_t,\qquad v_t=\beta_2 v_{t-1}+(1-\beta_2)g_t^2. \qquad(\text{paper Eq. 19}) \]
+<p>\(m_t\) estimates the <strong>first moment</strong> (mean) of the gradient and \(v_t\) the <strong>second raw moment</strong> (uncentered variance), hence the name. Note the difference from classical momentum: the \((1-\beta_1)\) factor makes \(m_t\) a true average (same scale as \(g\)) rather than a sum.</p>
+
+<h3>8.2 Bias correction: derivation</h3>
+<p>Both moments are initialized at zero, so early estimates are biased toward zero, especially when \(\beta\) is close to 1. Let us quantify this for \(v_t\). Unrolling,</p>
+\[ v_t=(1-\beta_2)\sum_{i=1}^{t}\beta_2^{\,t-i}g_i^2. \]
+<p>Take expectations, assuming \(\mathbb{E}[g_i^2]=\mathbb{E}[g^2]\) is constant over time:</p>
+\[ \mathbb{E}[v_t]=\mathbb{E}[g^2]\,(1-\beta_2)\sum_{i=1}^{t}\beta_2^{\,t-i}=\mathbb{E}[g^2]\,(1-\beta_2^{\,t}). \]
+<p>So \(v_t\) underestimates the true second moment by a factor of \((1-\beta_2^t)\). Dividing it out gives an unbiased estimate. The same argument applies to \(m_t\):</p>
+\[ \hat m_t=\frac{m_t}{1-\beta_1^t},\qquad \hat v_t=\frac{v_t}{1-\beta_2^t}. \qquad(\text{paper Eq. 20}) \]
+<p>With \(\beta_2=0.999\), at \(t=1\) we have \(v_1=0.001\,g_1^2\), a 1000-fold underestimate, so without correction \(1/\sqrt{v_1}\) would be about 32 times too big and the very first step would explode. The correction factor vanishes as \(t\) grows (\(\beta^t\to0\)), so it matters only in the early phase, and more for \(\beta_2\) than \(\beta_1\).</p>
+
+<h3>8.3 The update rule</h3>
+\[ \theta_{t+1}=\theta_t-\frac{\eta}{\sqrt{\hat v_t}+\epsilon}\,\hat m_t. \qquad(\text{paper Eq. 21}) \]
+<p>Defaults proposed by the authors: \(\beta_1=0.9\), \(\beta_2=0.999\), \(\epsilon=10^{-8}\), with \(\eta=0.001\) the common learning rate.</p>
+
+<h3>8.4 Worked first step</h3>
+<p>At \(t=1\) with gradient \(g\): \(m_1=0.1g\), \(v_1=0.001g^2\), \(\hat m_1=0.1g/(1-0.9)=g\), \(\hat v_1=0.001g^2/(1-0.999)=g^2\). The update is \(-\eta\,g/(|g|+\epsilon)\approx-\eta\,\mathrm{sign}(g)\). The first Adam step has magnitude almost exactly \(\eta\) in every coordinate, regardless of gradient scale.</p>
+
+<h3>8.5 Understanding the step size</h3>
+<ul>
+<li><strong>Scale invariance.</strong> Multiplying the loss by a constant \(c\) multiplies \(\hat m\) by \(c\) and \(\sqrt{\hat v}\) by \(c\), so the update is unchanged (apart from \(\epsilon\)). Adam is insensitive to gradient scale.</li>
+<li><strong>Bounded step.</strong> In normal conditions \(|\hat m_t|/\sqrt{\hat v_t}\lesssim1\), so each coordinate moves by at most about \(\eta\) per step. \(\eta\) therefore acts as a trust-region radius in parameter space, which makes it easier to set by reasoning about parameter scales.</li>
+<li><strong>Signal-to-noise interpretation.</strong> \(\hat m/\sqrt{\hat v}\) compares the mean gradient with its RMS size. When gradients are consistent (high signal-to-noise) the ratio is near \(\pm1\) and steps are large. When gradients are noisy and mean near zero the ratio is small, so steps shrink automatically, like an automatic annealing near an optimum.</li>
+<li><strong>The role of \(\epsilon\).</strong> When \(\sqrt{\hat v}\) is comparable to or smaller than \(\epsilon\), \(\epsilon\) dominates and Adam behaves like momentum-SGD with a step scale \(\eta/\epsilon\). Larger \(\epsilon\) (for example \(10^{-3}\) to \(10^{-1}\) in some vision work) is sometimes tuned as a genuine hyperparameter.</li>
+</ul>
+
+<h3>8.6 Claims and caveats</h3>
+<p>The authors show empirically that Adam works well and compares favourably with other adaptive methods. As the paper's Section 4.10 notes, bias correction helps Adam slightly outperform RMSprop late in optimization as gradients become sparser (the paper's summary of Kingma and Ba). See Section 16.2 for later results on Adam's convergence and generalization.</p>
+<div class="box def"><span class="t">Adam at a glance</span>
+<p><strong>State:</strong> two vectors (\(m,v\)) and a step counter \(t\). <strong>Hyperparameters:</strong> \(\eta=10^{-3}\), \(\beta_1=0.9\), \(\beta_2=0.999\), \(\epsilon=10^{-8}\). <strong>Equals:</strong> RMSprop + momentum + bias correction.</p></div>
+
+<!-- ============================================================ -->
+<h2 id="ch9">9. AdaMax</h2>
+
+<h3>9.1 Generalizing the norm</h3>
+<p>Adam's \(v_t\) scales the gradient inversely to the \(\ell_2\) norm of past gradients (through \(v_{t-1}\)) and the current gradient \(|g_t|^2\):</p>
+\[ v_t=\beta_2 v_{t-1}+(1-\beta_2)|g_t|^2. \]
+<p>This can be generalized to an \(\ell_p\) norm. Kingma and Ba parameterize the decay as \(\beta_2^{\,p}\):</p>
+\[ v_t=\beta_2^{\,p}v_{t-1}+(1-\beta_2^{\,p})|g_t|^p. \qquad(\text{paper Eq. 23}) \]
+<p>Large-\(p\) norms are numerically unstable, so \(\ell_1\) and \(\ell_2\) are the common choices. But the \(\ell_\infty\) norm is stable, and as \(p\to\infty\) the quantity \(u_t=\lim v_t^{1/p}\) converges to a clean expression. Unrolling \(v_t\) and taking the \(p\)-th root:</p>
+\[ u_t=\lim_{p\to\infty}\Big((1-\beta_2^p)\sum_{i=1}^{t}\beta_2^{p(t-i)}|g_i|^p\Big)^{1/p}=\max\big(\beta_2^{\,t-1}|g_1|,\ \beta_2^{\,t-2}|g_2|,\dots,|g_t|\big), \]
+<p>which satisfies the recursion</p>
+\[ u_t=\max(\beta_2\,u_{t-1},\ |g_t|). \qquad(\text{paper Eq. 24}) \]
+<div class="box pitfall"><span class="t">Typo in the paper</span>
+<p>Equation 24 in the paper writes \(v_{t-1}\) on the right-hand side; it should be \(u_{t-1}\), the infinity-norm quantity from the previous step. The recursion above is the correct form.</p></div>
+
+<h3>9.2 The update</h3>
+<p>Replace Adam's \(\sqrt{\hat v_t}+\epsilon\) by \(u_t\):</p>
+\[ \theta_{t+1}=\theta_t-\frac{\eta}{u_t}\,\hat m_t. \qquad(\text{paper Eq. 25}) \]
+<ul>
+<li>\(u_t\) is a decayed running <em>maximum</em> of absolute gradients: a spike is remembered for roughly \(\log(\text{ratio})/(1-\beta_2)\) steps, then fades.</li>
+<li>No bias correction for \(u_t\) is needed, because a max operation is not pulled toward zero by the zero initialization the way an average is. We still correct \(\hat m_t\).</li>
+<li>Since \(u_t\ge|g_t|\) and \(|\hat m_t|\) is an average of recent gradients, the step is bounded by \(\eta\) more simply than for Adam.</li>
+<li>No \(\epsilon\) is needed for stability, unless \(u_t\) can be exactly 0 (implementations add a tiny constant).</li>
+</ul>
+<p>Good defaults: \(\eta=0.002\), \(\beta_1=0.9\), \(\beta_2=0.999\). The infinity norm is less sensitive to a single noisy small gradient but one outlier large gradient suppresses the step size for a while.</p>
+
+<!-- ============================================================ -->
+<h2 id="ch10">10. Nadam</h2>
+
+<h3>10.1 The goal</h3>
+<p>Adam is RMSprop (squared-gradient EMA) plus momentum (gradient EMA). We saw that Nesterov momentum improves on classical momentum. Nadam (Dozat, 2016) swaps Adam's momentum for Nesterov momentum. Doing this requires care, because naive NAG evaluates the gradient at a shifted point, which does not fit Adam's structure. Dozat's trick is to apply the look-ahead directly in the update instead.</p>
+
+<h3>10.2 Step 1: restate momentum and NAG</h3>
+<p>With the paper's notation (\(m\) as velocity, momentum decay \(\gamma\), step \(\eta\)), momentum is</p>
+\[ g_t=\nabla J(\theta_t),\quad m_t=\gamma m_{t-1}+\eta g_t,\quad \theta_{t+1}=\theta_t-m_t. \qquad(\text{Eq. 26}) \]
+<p>Expanding the last line:</p>
+\[ \theta_{t+1}=\theta_t-(\gamma m_{t-1}+\eta g_t). \qquad(\text{Eq. 27}) \]
+<p>This shows a step along the previous momentum plus a step along the current gradient. NAG evaluates the gradient after the momentum step:</p>
+\[ g_t=\nabla J(\theta_t-\gamma m_{t-1}),\quad m_t=\gamma m_{t-1}+\eta g_t,\quad \theta_{t+1}=\theta_t-m_t. \qquad(\text{Eq. 28}) \]
+
+<h3>10.3 Step 2: Dozat's modification</h3>
+<p>In Eq. 28 the momentum step is applied twice: once to shift the point at which the gradient is computed, and again in the parameter update. Dozat proposes using the gradient at the current point and moving the look-ahead into the update by using the <em>current</em> velocity \(m_t\) instead of \(m_{t-1}\):</p>
+\[ g_t=\nabla J(\theta_t),\quad m_t=\gamma m_{t-1}+\eta g_t,\quad \theta_{t+1}=\theta_t-(\gamma m_t+\eta g_t). \qquad(\text{Eq. 29}) \]
+<p>This is the same reformulation as in Section 4.3: look-ahead is obtained by letting the parameter step use the velocity that already includes the newest gradient.</p>
+
+<h3>10.4 Step 3: apply it to Adam</h3>
+<p>Start from Adam's rule and expand \(\hat m_t\):</p>
+\[ \theta_{t+1}=\theta_t-\frac{\eta}{\sqrt{\hat v_t}+\epsilon}\left(\frac{\beta_1 m_{t-1}}{1-\beta_1^t}+\frac{(1-\beta_1)g_t}{1-\beta_1^t}\right). \qquad(\text{Eq. 31}) \]
+<p>The first term, \(\beta_1 m_{t-1}/(1-\beta_1^t)\), is essentially the bias-corrected previous momentum \(\hat m_{t-1}\) (up to the minor difference in correction exponent that the paper glosses over, which Dozat handles explicitly):</p>
+\[ \theta_{t+1}=\theta_t-\frac{\eta}{\sqrt{\hat v_t}+\epsilon}\left(\beta_1\hat m_{t-1}+\frac{(1-\beta_1)g_t}{1-\beta_1^t}\right). \qquad(\text{Eq. 32}) \]
+<p>This has exactly the shape of the expanded momentum rule (Eq. 27). Following Eq. 29, replace \(\hat m_{t-1}\) with the current \(\hat m_t\) to get the Nadam update:</p>
+\[ \theta_{t+1}=\theta_t-\frac{\eta}{\sqrt{\hat v_t}+\epsilon}\left(\beta_1\hat m_t+\frac{(1-\beta_1)g_t}{1-\beta_1^t}\right). \qquad(\text{paper Eq. 33}) \]
+<p>The second term is the bias-corrected current gradient; the first is the look-ahead momentum. Only the numerator differs from Adam, and \(\hat v_t\) is untouched.</p>
+<div class="box intuition"><span class="t">Reading Eq. 33</span>
+<p>Adam steps along \(\hat m_t\), a blend of history and the current gradient. Nadam steps along \(\beta_1\hat m_t+(\text{current gradient term})\), which weights the newest gradient <em>more</em>, as if the momentum had already been advanced one step. Empirically the benefit is small but consistent in some language and sequence models.</p></div>
+<div class="box def"><span class="t">Nadam at a glance</span>
+<p><strong>State:</strong> identical to Adam. <strong>Hyperparameters:</strong> same as Adam (\(\eta\approx0.002\) is the Keras default). <strong>Difference:</strong> Nesterov-style look-ahead in the numerator.</p></div>
+
+<!-- ============================================================ -->
+<h2 id="ch11">11. Behaviour on test surfaces</h2>
+<p>The paper includes two animations by Alec Radford (still frames as Figure 4) that show the optimizers on a loss surface and at a saddle point. Here is what they illustrate and how to read them.</p>
+
+<h3>11.1 The Beale function</h3>
+<p>All optimizers start at the same point on the contours of the Beale function.</p>
+<ul>
+<li>Adagrad, Adadelta, and RMSprop head off in the right direction immediately and converge at a similar speed. Per-parameter scaling flattens the ravine-like geometry.</li>
+<li>Momentum and NAG get led off course because accumulated velocity carries them past the ideal path ("a ball rolling down the hill").</li>
+<li>NAG corrects its course sooner thanks to look-ahead and then heads to the minimum.</li>
+</ul>
+
+<h3>11.2 The saddle point</h3>
+<ul>
+<li>SGD, Momentum, and NAG struggle to <em>break symmetry</em>: at a symmetric saddle the gradient is tiny, and the unstable direction grows only slowly. Momentum and NAG eventually escape, but SGD nearly stalls.</li>
+<li>Adagrad, RMSprop, and Adadelta head down the negative-curvature slope quickly, with Adadelta leading. Division by the small RMS of the gradient amplifies tiny gradients into reasonable steps. This is the key reason adaptive methods are good at plateaus and saddles.</li>
+</ul>
+<div class="box pitfall"><span class="t">Do not over-generalize toy figures</span>
+<p>Two-dimensional animations show qualitative mechanisms. They do not establish which optimizer will generalize best on your network, and they omit mini-batch noise, which changes behaviour significantly. Use them for intuition and then test on your problem.</p></div>
+
+<!-- ============================================================ -->
+<h2 id="ch12">12. Which optimizer to use?</h2>
+<p>The paper's guidance, with extra reasoning:</p>
+<ol>
+<li><strong>Sparse input data</strong>: use an adaptive method. Rare features get large updates, and you will probably get good results with default values and no learning-rate tuning.</li>
+<li><strong>The family relationship:</strong> RMSprop extends Adagrad to cure its shrinking rates. Adadelta equals RMSprop except that Adadelta puts \(\mathrm{RMS}[\Delta\theta]\) in the numerator instead of \(\eta\). Adam adds bias correction and momentum to RMSprop. So RMSprop, Adadelta, and Adam are similar and perform well in similar circumstances.</li>
+<li><strong>Adam as default:</strong> bias correction helps it slightly outperform RMSprop towards the end of optimization as gradients become sparser. The paper concludes Adam might be the best overall choice.</li>
+<li><strong>Vanilla SGD still appears in papers:</strong> many recent works use plain SGD (no momentum) with a simple annealing schedule. SGD usually finds a minimum but can take significantly longer, depends heavily on good initialization and annealing, and may get stuck at saddle points.</li>
+<li><strong>Rule of thumb:</strong> if you want fast convergence or train a deep/complex network, choose an adaptive method.</li>
+</ol>
+<div class="box beyond"><span class="t">Beyond the paper: modern practitioner folklore</span>
+<p>This is experience reported after 2016, not claims of the paper. SGD with momentum and a good schedule is still a strong default for image-classification CNNs and is often reported to generalize slightly better. Adam or AdamW is the default for transformers and language models, where it tends to be much more forgiving. Always tune the learning rate and schedule, since they usually matter more than the choice among adaptive methods.</p></div>
+
+<h3>12.1 Decision table</h3>
+<div class="tw"><table>
+<tr><th>Situation</th><th>Reasonable starting point</th></tr>
+<tr><td>Sparse features, embeddings</td><td>Adagrad, or Adam / RMSprop</td></tr>
+<tr><td>Deep or complex net, want fast convergence, little tuning</td><td>Adam (\(\eta=10^{-3}\)), Nadam</td></tr>
+<tr><td>RNNs (original paper context)</td><td>RMSprop, Adam, with NAG-style ideas</td></tr>
+<tr><td>Willing to tune schedule, CNNs</td><td>SGD + momentum (0.9) + step or cosine decay</td></tr>
+<tr><td>Gradient spikes dominate</td><td>AdaMax, or clip gradients</td></tr>
+<tr><td>Want to avoid choosing \(\eta\)</td><td>Adadelta (but \(\epsilon\)/scale still matters)</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="ch13">13. Parallel and distributed SGD</h2>
+<p>With big data and cheap clusters, distributing SGD is natural, but SGD is <em>inherently sequential</em>: each step depends on the result of the previous. Synchronous execution preserves good convergence but is slow, because everyone waits for stragglers. Asynchronous execution is fast but suffers from <strong>stale gradients</strong>: a worker computes a gradient at parameters that others have since changed, and poor communication can harm convergence. Parallelizing on a single multi-core machine is also possible.</p>
+
+<h3>13.1 Hogwild!</h3>
+<p>Niu et al. let several processors write to shared memory <em>without locks</em>. Locking would serialize the updates. Without locks, two processors may overwrite each other, but it works if the data are <strong>sparse</strong>: each update touches only a small subset of parameters, so collisions are rare, and the algorithm achieves nearly optimal convergence rate.</p>
+<h3>13.2 Downpour SGD</h3>
+<p>An asynchronous variant used by Dean et al. in Google's DistBelief (the predecessor of TensorFlow). Multiple model replicas train in parallel on shards of the data. They push updates to a <strong>parameter server</strong> sharded across many machines, each storing and updating a fraction of the parameters. Replicas do not communicate with each other, so their parameters can drift apart, which hinders convergence.</p>
+<h3>13.3 Delay-tolerant algorithms</h3>
+<p>McMahan and Streeter extend Adagrad to the parallel setting. The algorithm adapts not only to past gradients but also to <em>update delays</em>, shrinking the step for parameters whose updates are stale. It works well in practice.</p>
+<h3>13.4 TensorFlow</h3>
+<p>Google's open-sourced framework for large-scale ML, built from DistBelief experience. The distributed version (April 2016) splits the computation graph into one subgraph per device, with communication through Send/Receive node pairs. The paper's description is dated: today distributed training typically uses synchronous data parallelism with all-reduce, plus model/pipeline/tensor parallelism for very large models.</p>
+<h3>13.5 Elastic Averaging SGD (EASGD)</h3>
+<p>Zhang et al. link the workers' parameters to a <strong>center variable</strong> \(\tilde x\) stored at the parameter server through an elastic force. Conceptually each worker \(i\) minimizes its loss plus a penalty \(\tfrac{\rho}{2}\|x^i-\tilde x\|^2\), and the center moves toward the average of the workers. The spring-like coupling allows local variables to fluctuate further from the center, which allows more exploration, and the paper reports that this led to improved performance by finding new local optima.</p>
+<div class="tw"><table>
+<tr><th>Method</th><th>Core idea</th><th>Requirement / risk</th></tr>
+<tr><td>Hogwild!</td><td>lock-free shared-memory updates</td><td>sparse updates; single machine</td></tr>
+<tr><td>Downpour SGD</td><td>async replicas + sharded parameter server</td><td>replicas can diverge</td></tr>
+<tr><td>Delay-tolerant Adagrad</td><td>step size accounts for staleness</td><td>needs delay tracking</td></tr>
+<tr><td>TensorFlow</td><td>graph partitioned per device</td><td>infrastructure, not an algorithm</td></tr>
+<tr><td>EASGD</td><td>elastic tie to a center variable</td><td>extra hyperparameter \(\rho\)</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="ch14">14. Additional strategies</h2>
+<p>These techniques are used <em>alongside</em> any of the optimizers above.</p>
+
+<h3>14.1 Shuffling and curriculum learning</h3>
+<p><strong>Shuffling.</strong> Presenting examples in a meaningful order (for instance all of one class, then another) biases the optimizer: successive gradients are correlated and the parameters drift toward whatever the current block prefers. Reshuffle the training data every epoch, so each epoch sees a different random order.</p>
+<p><strong>Curriculum learning</strong> (Bengio et al., 2009) deliberately orders examples from easy to hard, like teaching. Zaremba and Sutskever could only train LSTMs to evaluate simple programs using curriculum learning, and found a <em>mixed</em> strategy (a blend of difficulties) better than the naive strategy of sorting by increasing difficulty. Curricula are most useful when direct training on the hard task fails.</p>
+
+<h3>14.2 Batch normalization</h3>
+<p>We initialize parameters to have zero mean and unit variance (or a similar scale). As training proceeds and parameters move unequally, these distributions shift, which slows training, and the effect compounds with depth. <strong>Batch normalization</strong> (Ioffe and Szegedy) re-normalizes layer inputs for every mini-batch and backpropagates through the normalization. For a feature \(x\) over a mini-batch:</p>
+\[ \hat x=\frac{x-\mu_B}{\sqrt{\sigma_B^2+\epsilon}},\qquad y=\gamma_{\text{bn}}\,\hat x+\beta_{\text{bn}}, \]
+<p>where \(\gamma_{\text{bn}},\beta_{\text{bn}}\) are learned, so the layer can undo the normalization if that is useful. At inference, running averages of \(\mu,\sigma^2\) are used. Benefits claimed in the paper: higher learning rates are usable, less care over initialization, and a regularizing effect that can reduce or remove the need for Dropout. (Later work disputes the "internal covariate shift" explanation and attributes the benefit mainly to smoother loss landscapes, but the practical benefits stand.)</p>
+<div class="box pitfall"><span class="t">Two practical traps</span>
+<p>Batch norm behaves differently in training and evaluation modes, and it relies on batch statistics, so very small batches make it noisy. Do not apply weight decay or adaptive scaling to its \(\gamma,\beta\) without thinking about it.</p></div>
+
+<h3>14.3 Early stopping</h3>
+<p>Geoff Hinton called early stopping a "beautiful free lunch". Monitor the loss on a held-out validation set and stop when it no longer improves enough, with some <em>patience</em> (a number of epochs to wait before quitting). Keep the best checkpoint. It acts as a regularizer: stopping before the optimum of the training loss limits how far the weights can fit noise.</p>
+
+<h3>14.4 Gradient noise</h3>
+<p>Neelakantan et al. add Gaussian noise to every gradient:</p>
+\[ g_{t,i}\leftarrow g_{t,i}+\mathcal N(0,\sigma_t^2),\qquad \sigma_t^2=\frac{\eta}{(1+t)^{\gamma}}. \qquad(\text{Eqs. 34, 35}) \]
+<p>The variance is annealed so that the noise is large early and negligible late. (In that paper \(\gamma\) is fixed at 0.55 and \(\eta\) is a separate noise-scale hyperparameter, not the learning rate.) It makes networks more robust to poor initialization and helps train very deep and complex ones. The authors suspect the noise gives the model more chances to escape and to find new local minima, which are more frequent for deeper models.</p>
+
+<h3>14.5 Gradient clipping (not in the paper)</h3>
+<p>Exploding gradients, especially in RNNs, can derail training. Clip the global norm: if \(\|g\|>c\), set \(g\leftarrow g\,c/\|g\|\). It is standard for recurrent and transformer training and combines with every optimizer here.</p>
+
+<h3>14.6 Weight initialization (context)</h3>
+<p>The paper stresses that SGD depends strongly on initialization. Schemes such as Xavier/Glorot and He initialization set weight variance by layer width so that activations and gradients neither vanish nor explode at the start of training.</p>
+
+<h3>14.7 Learning-rate schedules</h3>
+<p>The paper mentions annealing as a challenge-prone technique, but schedules are indispensable in practice. Common forms: step decay (multiply by 0.1 every \(k\) epochs), exponential decay, \(1/t\) decay, cosine annealing, and linear warm-up followed by decay. Warm-up is especially important for Adam on large models, because \(\hat v_t\) is a poor estimate in the first steps.</p>
+
+<!-- ============================================================ -->
+<h2 id="ch15">15. Reference implementations</h2>
+<p>Minimal NumPy versions of every method, written to mirror the equations. Each takes a parameter array and gradient, and keeps its own state. They are for study; the formulas follow the paper, with \(\epsilon\) placement noted.</p>
+<pre><code>import numpy as np
+
+class SGD:
+    def __init__(self, lr=0.01):
+        self.lr = lr
+    def step(self, p, g):
+        return p - self.lr * g
+
+class Momentum:                      # Eq. 4
+    def __init__(self, lr=0.01, gamma=0.9):
+        self.lr, self.gamma, self.v = lr, gamma, None
+    def step(self, p, g):
+        if self.v is None: self.v = np.zeros_like(p)
+        self.v = self.gamma * self.v + self.lr * g
+        return p - self.v
+
+class NAG:                           # Eq. 5, stores theta; gradient fn needed
+    def __init__(self, lr=0.01, gamma=0.9):
+        self.lr, self.gamma, self.v = lr, gamma, None
+    def step(self, p, grad_fn):
+        if self.v is None: self.v = np.zeros_like(p)
+        g = grad_fn(p - self.gamma * self.v)       # look-ahead gradient
+        self.v = self.gamma * self.v + self.lr * g
+        return p - self.v
+
+class Adagrad:                       # Eqs. 8-9
+    def __init__(self, lr=0.01, eps=1e-8):
+        self.lr, self.eps, self.G = lr, eps, None
+    def step(self, p, g):
+        if self.G is None: self.G = np.zeros_like(p)
+        self.G += g * g
+        return p - self.lr * g / np.sqrt(self.G + self.eps)
+
+class Adadelta:                      # Eqs. 10-17
+    def __init__(self, gamma=0.9, eps=1e-6):
+        self.gamma, self.eps = gamma, eps
+        self.Eg2 = self.Edx2 = None
+    def step(self, p, g):
+        if self.Eg2 is None:
+            self.Eg2, self.Edx2 = np.zeros_like(p), np.zeros_like(p)
+        self.Eg2 = self.gamma * self.Eg2 + (1 - self.gamma) * g * g
+        dx = -np.sqrt(self.Edx2 + self.eps) / np.sqrt(self.Eg2 + self.eps) * g
+        self.Edx2 = self.gamma * self.Edx2 + (1 - self.gamma) * dx * dx
+        return p + dx
+
+class RMSprop:                       # Eq. 18
+    def __init__(self, lr=0.001, gamma=0.9, eps=1e-8):
+        self.lr, self.gamma, self.eps, self.Eg2 = lr, gamma, eps, None
+    def step(self, p, g):
+        if self.Eg2 is None: self.Eg2 = np.zeros_like(p)
+        self.Eg2 = self.gamma * self.Eg2 + (1 - self.gamma) * g * g
+        return p - self.lr * g / np.sqrt(self.Eg2 + self.eps)
+
+class Adam:                          # Eqs. 19-21
+    def __init__(self, lr=1e-3, b1=0.9, b2=0.999, eps=1e-8):
+        self.lr, self.b1, self.b2, self.eps = lr, b1, b2, eps
+        self.m = self.v = None; self.t = 0
+    def step(self, p, g):
+        if self.m is None: self.m, self.v = np.zeros_like(p), np.zeros_like(p)
+        self.t += 1
+        self.m = self.b1 * self.m + (1 - self.b1) * g
+        self.v = self.b2 * self.v + (1 - self.b2) * g * g
+        mh = self.m / (1 - self.b1 ** self.t)
+        vh = self.v / (1 - self.b2 ** self.t)
+        return p - self.lr * mh / (np.sqrt(vh) + self.eps)
+
+class AdaMax:                        # Eqs. 24-25 (u uses u_{t-1}, not v)
+    def __init__(self, lr=2e-3, b1=0.9, b2=0.999, eps=1e-8):
+        self.lr, self.b1, self.b2, self.eps = lr, b1, b2, eps
+        self.m = self.u = None; self.t = 0
+    def step(self, p, g):
+        if self.m is None: self.m, self.u = np.zeros_like(p), np.zeros_like(p)
+        self.t += 1
+        self.m = self.b1 * self.m + (1 - self.b1) * g
+        self.u = np.maximum(self.b2 * self.u, np.abs(g))
+        mh = self.m / (1 - self.b1 ** self.t)
+        return p - self.lr * mh / (self.u + self.eps)
+
+class Nadam:                         # Eq. 33
+    def __init__(self, lr=2e-3, b1=0.9, b2=0.999, eps=1e-8):
+        self.lr, self.b1, self.b2, self.eps = lr, b1, b2, eps
+        self.m = self.v = None; self.t = 0
+    def step(self, p, g):
+        if self.m is None: self.m, self.v = np.zeros_like(p), np.zeros_like(p)
+        self.t += 1
+        self.m = self.b1 * self.m + (1 - self.b1) * g
+        self.v = self.b2 * self.v + (1 - self.b2) * g * g
+        mh = self.m / (1 - self.b1 ** self.t)
+        vh = self.v / (1 - self.b2 ** self.t)
+        nes = self.b1 * mh + (1 - self.b1) * g / (1 - self.b1 ** self.t)
+        return p - self.lr * nes / (np.sqrt(vh) + self.eps)</code></pre>
+
+<h3>15.1 Testing your implementation</h3>
+<ol>
+<li>Verify against a framework (PyTorch / Keras) on a fixed seed and small quadratic; match to ~1e-6 after 100 steps, taking note of \(\epsilon\) placement and learning-rate scaling.</li>
+<li>Check invariants: Adam's first step is \(\approx\eta\,\mathrm{sign}(g)\); Momentum with \(\gamma=0\) equals SGD; AdaMax's \(u_t\ge|g_t|\) always.</li>
+<li>Plot trajectories on the Beale function, \(f(x,y)=(1.5-x+xy)^2+(2.25-x+xy^2)^2+(2.625-x+xy^3)^2\), whose minimum is at \((3,0.5)\), and on a saddle such as \(f=x^2-y^2\) started near the saddle with a small offset.</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2 id="ch16">16. Beyond the paper</h2>
+<div class="box beyond"><span class="t">Scope note</span>
+<p>The paper dates from 2016. The following topics are developments since then that you will meet when you read further. They come from my general knowledge of the literature, so verify specifics against the original sources before relying on them.</p></div>
+
+<h3>16.1 Learning-rate schedules and warm-up</h3>
+<p>Cosine annealing with restarts, one-cycle policies, and linear warm-up with decay (the "Noam"/inverse-sqrt schedule for transformers) are now standard. They address the paper's "fixed schedule" challenge empirically rather than by adaptivity.</p>
+<h3>16.2 Adam's problems and fixes</h3>
+<ul>
+<li><strong>AMSGrad</strong> (Reddi et al., 2018) showed that Adam can fail to converge on some convex problems, because the effective step size can increase when \(v_t\) decreases, and proposed using the running maximum of \(v_t\), which restores a convergence guarantee.</li>
+<li><strong>AdamW</strong> (Loshchilov and Hutter) decouples weight decay from the gradient-based update. With adaptive methods, L2 regularization added to the loss is not equivalent to weight decay, because the penalty gradient is rescaled by \(1/\sqrt{\hat v}\). AdamW applies decay directly to the weights and is the usual Adam variant in practice.</li>
+<li><strong>RAdam</strong> addresses the high variance of the adaptive rate in the earliest steps, which is a principled alternative to warm-up.</li>
+<li>Reports that adaptive methods can generalize worse than SGD (Wilson et al., 2017) fuelled continued debate, with many results depending on tuning effort.</li>
+</ul>
+<h3>16.3 Large-batch and layer-wise optimizers</h3>
+<p>LARS and LAMB scale each layer's step by the ratio of weight norm to gradient norm, allowing very large batch sizes.</p>
+<h3>16.4 Memory-efficient and newer methods</h3>
+<p>Adafactor factorizes the second-moment matrix to save memory; Lion uses only the sign of a momentum-based update; 8-bit optimizers quantize state. Adam's two extra state vectors triple the memory beyond the weights, which is significant for large models.</p>
+<h3>16.5 Second-order and preconditioned methods</h3>
+<p>The paper excluded Newton's method as infeasible. Approximations nevertheless exist: L-BFGS (full-batch or small problems), K-FAC (Kronecker-factored curvature), and Shampoo (matrix preconditioners). Adagrad-type methods can be viewed as a diagonal preconditioner built from the gradient history, which is the cheapest possible curvature approximation.</p>
+<h3>16.6 Sharpness-aware and theory topics</h3>
+<p>Sharpness-Aware Minimization (SAM) seeks flat minima. Theory topics include implicit regularization of SGD, edge-of-stability behaviour, and the noise-scale view of batch size and learning rate.</p>
+
+<!-- ============================================================ -->
+<h2 id="ch17">17. Summary and cheat sheet</h2>
+<div class="tw"><table>
+<tr><th>Method</th><th>Update (simplified)</th><th>State per param</th><th>Typical defaults</th><th>Main fix / weakness</th></tr>
+<tr><td>SGD</td><td>\(\theta-\eta g\)</td><td>none</td><td>\(\eta\) tuned</td><td>noisy; ravines, saddles</td></tr>
+<tr><td>Momentum</td><td>\(v=\gamma v+\eta g\); \(\theta-v\)</td><td>1</td><td>\(\gamma=0.9\)</td><td>ravines; can overshoot</td></tr>
+<tr><td>NAG</td><td>gradient at \(\theta-\gamma v\)</td><td>1</td><td>\(\gamma=0.9\)</td><td>less overshoot</td></tr>
+<tr><td>Adagrad</td><td>\(\eta g/\sqrt{\sum g^2}\)</td><td>1</td><td>\(\eta=0.01\)</td><td>sparse data; rate vanishes</td></tr>
+<tr><td>Adadelta</td><td>\(-\frac{\mathrm{RMS}[\Delta\theta]}{\mathrm{RMS}[g]}g\)</td><td>2</td><td>\(\gamma=0.9\), \(\epsilon\)</td><td>no \(\eta\); units fixed</td></tr>
+<tr><td>RMSprop</td><td>\(\eta g/\sqrt{E[g^2]}\)</td><td>1</td><td>\(\eta=10^{-3}\), \(\gamma=0.9\)</td><td>no momentum / bias corr.</td></tr>
+<tr><td>Adam</td><td>\(\eta\hat m/(\sqrt{\hat v}+\epsilon)\)</td><td>2</td><td>\(10^{-3}\), 0.9, 0.999</td><td>general default; see 16.2</td></tr>
+<tr><td>AdaMax</td><td>\(\eta\hat m/u\), \(u=\max(\beta_2u,|g|)\)</td><td>2</td><td>\(2\times10^{-3}\), 0.9, 0.999</td><td>stable, no bias corr. for \(u\)</td></tr>
+<tr><td>Nadam</td><td>Adam with Nesterov look-ahead</td><td>2</td><td>\(2\times10^{-3}\), 0.9, 0.999</td><td>slightly more responsive</td></tr>
+</table></div>
+
+<h3>17.1 The lineage in one paragraph</h3>
+<p>SGD is noisy and uses one rate for everything. Momentum accumulates velocity to cut through ravines; NAG looks ahead to avoid overshooting. Adagrad gives every parameter its own rate by dividing by accumulated squared gradients, but the rate dies. Adadelta and RMSprop replace the accumulation with a decaying average to keep the rate alive; Adadelta also corrects the units. Adam adds momentum and bias correction to RMSprop. AdaMax swaps the \(\ell_2\) norm for \(\ell_\infty\), and Nadam swaps Adam's momentum for Nesterov's.</p>
+
+<h3>17.2 Debugging checklist</h3>
+<ul>
+<li>Loss is NaN or diverges: lower \(\eta\), clip gradients, check \(\epsilon\), check data scaling.</li>
+<li>Loss plateaus early: raise \(\eta\), check initialization, try an adaptive method, add warm-up.</li>
+<li>Training loss drops but validation is worse: regularize, use early stopping, consider SGD+momentum or AdamW with weight decay.</li>
+<li>Adam is unstable at the start: add learning-rate warm-up, raise \(\epsilon\), lower \(\beta_2\) (e.g. 0.98 to 0.99).</li>
+<li>Results cannot be reproduced against a paper: check sign, \(\epsilon\) placement, learning-rate placement in momentum, and whether weight decay is coupled.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch18">18. Exercises</h2>
+<p>Try each before opening the answer.</p>
+
+<div class="box ex"><span class="t">Exercise 1: gradient descent on a quadratic</span>
+<p>For \(J(\theta)=\tfrac12(\theta_1^2+100\,\theta_2^2)\), find the largest stable \(\eta\), the optimal \(\eta\), and the per-step contraction at the optimum.</p>
+<details><summary>Answer</summary><p>\(\lambda_{\max}=100,\lambda_{\min}=1\), so stability needs \(\eta<2/100=0.02\). The optimal \(\eta^\star=2/101\approx0.0198\). The contraction factor is \((\kappa-1)/(\kappa+1)=99/101\approx0.980\) per step, so about 115 steps are needed per factor of 10 reduction in error (\(\ln10/0.0200\)).</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 2: momentum accumulation</span>
+<p>Show that for a constant gradient \(g\), the momentum velocity converges to \(\eta g/(1-\gamma)\).</p>
+<details><summary>Answer</summary><p>At the fixed point \(v=\gamma v+\eta g\), so \(v(1-\gamma)=\eta g\).</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 3: NAG as a change of variables</span>
+<p>Verify that \(\phi_t=\theta_t-\gamma v_{t-1}\) obeys \(\phi_{t+1}=\phi_t-\gamma v_t-\eta\nabla J(\phi_t)\).</p>
+<details><summary>Answer</summary><p>\(\phi_{t+1}-\phi_t=(\theta_{t+1}-\theta_t)-\gamma(v_t-v_{t-1})=-v_t-\gamma v_t+\gamma v_{t-1}\). Substitute \(\gamma v_{t-1}=v_t-\eta g\) with \(g=\nabla J(\phi_t)\): result \(=-v_t-\gamma v_t+v_t-\eta g=-\gamma v_t-\eta g\).</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 4: Adagrad's decay</span>
+<p>If a parameter receives gradient 1 on every step, how does Adagrad's effective learning rate behave, and after how many steps is it below \(\eta/100\)?</p>
+<details><summary>Answer</summary><p>\(G_t=t\), effective rate \(\eta/\sqrt t\). It falls below \(\eta/100\) when \(\sqrt t>100\), i.e. \(t>10{,}000\). With RMSprop (\(\gamma=0.9\)) the rate would instead settle near \(\eta\) since \(E[g^2]\to1\).</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 5: RMSprop equilibrium</span>
+<p>With constant gradient magnitude \(|g|=c\), what is \(E[g^2]\) at equilibrium and what is the step size?</p>
+<details><summary>Answer</summary><p>\(E[g^2]=\gamma E[g^2]+(1-\gamma)c^2\Rightarrow E[g^2]=c^2\). The step is \(\eta\,c/\sqrt{c^2+\epsilon}\approx\eta\), independent of \(c\).</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 6: Adam bias correction</span>
+<p>For \(\beta_1=0.9\), compute \(m_1,m_2\) and \(\hat m_1,\hat m_2\) when \(g_1=g_2=1\).</p>
+<details><summary>Answer</summary><p>\(m_1=0.1\), \(\hat m_1=0.1/0.1=1\). \(m_2=0.9(0.1)+0.1=0.19\), \(\hat m_2=0.19/(1-0.81)=1\). Correction recovers the true mean 1 exactly for a constant gradient.</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 7: AdaMax limit</span>
+<p>Why does the \(\ell_p\) recursion tend to a max as \(p\to\infty\)?</p>
+<details><summary>Answer</summary><p>The sum \(\sum_i\beta_2^{p(t-i)}|g_i|^p\) is dominated by its largest term when raised to the power \(1/p\): for positive numbers \(a_i\), \((\sum a_i^p)^{1/p}\to\max_i a_i\). Here \(a_i=\beta_2^{t-i}|g_i|\), and the factor \((1-\beta_2^p)^{1/p}\to1\).</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 8: implementation project</span>
+<p>Run all nine optimizers from Chapter 15 on the Beale function and on \(f=x^2-y^2+0.01\,y^4\) from a start of \((0.5,10^{-3})\). Plot the paths, count steps to reach \(\|\nabla f\|<10^{-3}\), and discuss how the behaviour compares with Section 11. Then add mini-batch gradient noise (Gaussian, std 0.1) and see which methods change ranking.</p></div>
+
+<div class="box ex"><span class="t">Exercise 9: thinking question</span>
+<p>Why can Adadelta be said to approximate a Newton step? Which approximation does it make?</p>
+<details><summary>Answer</summary><p>Newton's step is \(\Delta\theta=-g/h\) (per dimension). Adadelta uses \(\mathrm{RMS}[\Delta\theta]_{t-1}/\mathrm{RMS}[g]_t\) as a stand-in for \(1/h\): both have units \(\theta\) per (loss/\(\theta\)). The approximation treats the ratio of typical past update size to typical gradient size as the inverse curvature, valid only if the curvature is locally roughly constant.</p></details></div>
+
+<!-- ============================================================ -->
+<h2 id="ch19">19. Glossary and references</h2>
+<h3>19.1 Glossary</h3>
+<div class="tw"><table>
+<tr><th>Term</th><th>Meaning</th></tr>
+<tr><td>Annealing</td><td>Reducing the learning rate over training according to a schedule.</td></tr>
+<tr><td>Bias correction</td><td>Dividing an EMA by \(1-\beta^t\) to remove the zero-initialization bias.</td></tr>
+<tr><td>Condition number</td><td>Ratio of largest to smallest Hessian eigenvalue; difficulty of first-order optimization.</td></tr>
+<tr><td>Curriculum learning</td><td>Presenting examples in a meaningful (for example easy-to-hard) order.</td></tr>
+<tr><td>Epoch</td><td>One full pass over the training set.</td></tr>
+<tr><td>Learning rate</td><td>Scalar controlling step size.</td></tr>
+<tr><td>Parameter server</td><td>Machine(s) storing and updating the model parameters in distributed training.</td></tr>
+<tr><td>Preconditioner</td><td>A matrix (often diagonal) by which the gradient is scaled to improve conditioning.</td></tr>
+<tr><td>Ravine</td><td>Region curving much more steeply in one dimension than another.</td></tr>
+<tr><td>RMS</td><td>Root mean square, \(\sqrt{E[x^2]+\epsilon}\) in the paper's notation.</td></tr>
+<tr><td>Saddle point</td><td>Critical point with both positive and negative curvature directions.</td></tr>
+<tr><td>Stale gradient</td><td>A gradient computed from parameters that have since changed.</td></tr>
+</table></div>
+
+<h3>19.2 References (as cited by the paper)</h3>
+<ul style="font-size:16px;font-family:var(--sans);line-height:1.5">
+<li>Ruder, S. An overview of gradient descent optimization algorithms. arXiv:1609.04747, 2016.</li>
+<li>Robbins and Monro. A Stochastic Approximation Method. 1951.</li>
+<li>Qian. On the momentum term in gradient descent learning algorithms. 1999.</li>
+<li>Nesterov. A method for unconstrained convex minimization problem with the rate of convergence \(O(1/k^2)\). 1983.</li>
+<li>Duchi, Hazan, Singer. Adaptive Subgradient Methods for Online Learning and Stochastic Optimization (Adagrad). JMLR, 2011.</li>
+<li>Zeiler. ADADELTA: An Adaptive Learning Rate Method. 2012.</li>
+<li>Hinton. Lecture 6e, <em>Neural Networks for Machine Learning</em> (RMSprop), Coursera.</li>
+<li>Kingma and Ba. Adam: a Method for Stochastic Optimization. ICLR 2015.</li>
+<li>Dozat. Incorporating Nesterov Momentum into Adam. ICLR Workshop, 2016.</li>
+<li>Dauphin et al. Identifying and attacking the saddle point problem in high-dimensional non-convex optimization. 2014.</li>
+<li>Dean et al. Large Scale Distributed Deep Networks. NIPS 2012.</li>
+<li>Niu, Recht, Re, Wright. Hogwild!: A Lock-Free Approach to Parallelizing SGD. 2011.</li>
+<li>McMahan and Streeter. Delay-Tolerant Algorithms for Asynchronous Distributed Online Learning. 2014.</li>
+<li>Zhang, Choromanska, LeCun. Deep learning with Elastic Averaging SGD. NIPS 2015.</li>
+<li>Abadi et al. TensorFlow. 2015.</li>
+<li>Bengio et al. Curriculum learning. ICML 2009. Zaremba and Sutskever. Learning to Execute. 2014.</li>
+<li>Ioffe and Szegedy. Batch Normalization. 2015. Neelakantan et al. Adding Gradient Noise Improves Learning for Very Deep Networks. 2015.</li>
+<li>LeCun, Bottou, Orr, Müller. Efficient BackProp. 1998 (general tricks).</li>
+</ul>
+<h3>19.3 Further reading (post-2016)</h3>
+<ul style="font-size:16px;font-family:var(--sans);line-height:1.5">
+<li>Reddi, Kale, Kumar. On the Convergence of Adam and Beyond (AMSGrad), 2018.</li>
+<li>Loshchilov and Hutter. Decoupled Weight Decay Regularization (AdamW), 2019.</li>
+<li>Liu et al. On the Variance of the Adaptive Learning Rate and Beyond (RAdam), 2020.</li>
+<li>Wilson et al. The Marginal Value of Adaptive Gradient Methods in Machine Learning, 2017.</li>
+<li>Goodfellow, Bengio, Courville. <em>Deep Learning</em>, Chapter 8 (Optimization for Training Deep Models).</li>
+<li>Bottou, Curtis, Nocedal. Optimization Methods for Large-Scale Machine Learning, 2018.</li>
+</ul>
+</main>
+</div>
+</body>
+</html>

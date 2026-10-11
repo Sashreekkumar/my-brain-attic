@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modern Optimizers After AdamW: A Textbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script>
+window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']], tags: 'none' }, options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] } };
+</script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-chtml.js"></script>
+<style>
+:root{
+  --paper:#F5F6F8; --panel:#FFFFFF; --ink:#16202C; --muted:#566170; --rule:#D5DAE2;
+  --blue:#23478F; --teal:#17705F; --amber:#8A5A00; --red:#A03636; --codebg:#EDF0F5;
+  --serif:'Newsreader',Georgia,'Times New Roman',serif;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{--paper:#10141B;--panel:#161B24;--ink:#E3E7EE;--muted:#98A3B3;--rule:#2B3341;--blue:#8EAEFF;--teal:#5ECFBA;--amber:#E3B058;--red:#EF8888;--codebg:#1B2230;}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:1rem}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:19px;line-height:1.65}
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr);max-width:1300px;margin:0 auto}
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:2rem 1.25rem 2rem 1.5rem;border-right:1px solid var(--rule);font-family:var(--sans);font-size:14px;line-height:1.4}
+nav.toc .book{font-weight:600;font-size:15px;margin-bottom:1rem}
+nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:.26rem 0}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--blue)}
+nav.toc .part{margin-top:1rem;font-weight:600;color:var(--ink)}
+main{padding:3rem 2.5rem 6rem;max-width:900px}
+header.title h1{font-family:var(--sans);font-weight:600;font-size:2.4rem;line-height:1.15;margin:0 0 .6rem;letter-spacing:-.01em}
+header.title p{color:var(--muted);margin:.2rem 0}
+h2{font-family:var(--sans);font-size:1.75rem;font-weight:600;margin:4rem 0 1rem;padding-top:1.5rem;border-top:2px solid var(--ink);line-height:1.2}
+h3{font-family:var(--sans);font-size:1.28rem;font-weight:600;margin:2.4rem 0 .6rem;line-height:1.3}
+h4{font-family:var(--sans);font-size:1.02rem;font-weight:600;margin:1.6rem 0 .3rem;color:var(--blue)}
+p{margin:.8rem 0}
+a{color:var(--blue)}
+ul,ol{padding-left:1.4rem}
+li{margin:.3rem 0}
+code{font-family:var(--mono);font-size:.82em;background:var(--codebg);padding:.1em .35em;border-radius:3px}
+pre{background:var(--codebg);padding:1rem 1.1rem;overflow-x:auto;border-radius:4px;font-size:14px;line-height:1.5;border:1px solid var(--rule)}
+pre code{background:none;padding:0;font-size:inherit}
+mjx-container[display="true"]{overflow-x:auto;overflow-y:hidden;max-width:100%;margin:1rem 0 !important}
+.box{margin:1.5rem 0;padding:.9rem 1.2rem;background:var(--panel);border-left:4px solid var(--blue);border-radius:0 4px 4px 0}
+.box>.t{font-family:var(--sans);font-weight:600;font-size:.92rem;margin-bottom:.25rem;display:block}
+.box p:first-of-type{margin-top:.2rem}.box p:last-child{margin-bottom:.2rem}
+.box ul:last-child{margin-bottom:.2rem}
+.box.intuition{border-color:var(--teal)}.box.intuition>.t{color:var(--teal)}
+.box.pitfall{border-color:var(--amber)}.box.pitfall>.t{color:var(--amber)}
+.box.def{border-color:var(--blue)}.box.def>.t{color:var(--blue)}
+.box.verify{border-color:var(--muted)}.box.verify>.t{color:var(--muted)}
+.box.ex{border-color:var(--red)}.box.ex>.t{color:var(--red)}
+table{border-collapse:collapse;width:100%;margin:1.2rem 0;font-family:var(--sans);font-size:14px;line-height:1.4}
+th,td{border-bottom:1px solid var(--rule);padding:.5rem .6rem;text-align:left;vertical-align:top}
+th{border-bottom:2px solid var(--ink);font-weight:600}
+.tw{overflow-x:auto}
+details{margin:.5rem 0}
+summary{cursor:pointer;font-family:var(--sans);font-size:.9rem;color:var(--blue)}
+summary:focus-visible,a:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.goals{background:var(--panel);padding:1rem 1.3rem;border:1px solid var(--rule);border-radius:4px}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}
+  nav.toc{position:static;height:auto;border-right:0;border-bottom:1px solid var(--rule)}
+  main{padding:2rem 1.1rem 4rem}
+  body{font-size:18px}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="Table of contents">
+  <div class="book">Modern Optimizers After AdamW</div>
+  <a href="#ch0">0. Baseline, motivation, map</a>
+  <div class="part">Fixing Adam</div>
+  <a href="#ch1">1. RAdam</a>
+  <a href="#ch2">2. AdaBelief</a>
+  <a href="#ch3">3. Lookahead and Ranger</a>
+  <a href="#ch4">4. Adan</a>
+  <div class="part">Scale and memory</div>
+  <a href="#ch5">5. LARS and LAMB</a>
+  <a href="#ch6">6. Adafactor and CAME</a>
+  <a href="#ch7">7. 8-bit optimizers</a>
+  <a href="#ch8">8. Adam-mini</a>
+  <a href="#ch9">9. GaLore</a>
+  <div class="part">New update rules</div>
+  <a href="#ch10">10. Lion and sign methods</a>
+  <a href="#ch11">11. Sophia</a>
+  <a href="#ch12">12. AdEMAMix</a>
+  <a href="#ch13">13. Cautious optimizers</a>
+  <div class="part">Matrix-aware optimizers</div>
+  <a href="#ch14">14. K-FAC and natural gradient</a>
+  <a href="#ch15">15. Shampoo</a>
+  <a href="#ch16">16. SOAP</a>
+  <a href="#ch17">17. Muon</a>
+  <a href="#ch18">18. The norm view</a>
+  <div class="part">Schedules, tuning, robustness</div>
+  <a href="#ch19">19. Schedule-Free</a>
+  <a href="#ch20">20. Parameter-free: D-Adaptation, Prodigy</a>
+  <a href="#ch21">21. SAM and flat minima</a>
+  <a href="#ch22">22. DiLoCo and local methods</a>
+  <a href="#ch23">23. Practical training recipe</a>
+  <div class="part">Synthesis</div>
+  <a href="#ch24">24. Benchmarking honestly</a>
+  <a href="#ch25">25. Comparison and decision guide</a>
+  <a href="#ch26">26. Exercises</a>
+  <a href="#ch27">27. Reading list</a>
+</nav>
+
+<main>
+<header class="title">
+  <h1>Modern Optimizers After AdamW</h1>
+  <p>A textbook on the optimizers that came after Adam, Nadam, and AdamW: what problem each solves, the mathematics, the drawbacks, and where each is used.</p>
+  <p>This text assumes you know SGD, momentum, Nesterov, Adagrad, Adadelta, RMSprop, Adam, AdaMax, and Nadam, and does not re-derive them.</p>
+</header>
+
+<div class="goals">
+<strong style="font-family:var(--sans)">How each chapter is organized.</strong> <em>The need</em> (what broke), <em>the idea and math</em>, <em>the algorithm</em>, <em>where it is used</em>, and <em>drawbacks and challenges</em>. Boxes: teal is intuition, blue is a definition or summary, amber is a pitfall, grey asks you to verify a claim against the primary source, red is an exercise. Math renders with MathJax from a CDN, so open the file online.
+</div>
+<div class="box verify"><span class="t">A note on reliability</span>
+<p>This field moves quickly. The mathematics here is derived from the methods' definitions, but reported speedups, default values, and library availability come from my recollection of the papers and may be off in detail or out of date. The newest methods (2025 onward) are the most likely to have been superseded. Treat all numbers as pointers to verify, and consult the papers in the reading list.</p></div>
+
+<!-- ============================================================ -->
+<h2 id="ch0">0. Baseline, motivation, and a map</h2>
+
+<h3>0.1 The baseline: AdamW</h3>
+<p>Everything in this book is measured against AdamW (Loshchilov and Hutter), so we fix its definition. With first and second moment estimates \(\hat m_t,\hat v_t\) as in Adam, AdamW applies weight decay <em>directly to the weights</em>, outside the adaptive scaling:</p>
+\[ \theta_{t+1}=\theta_t-\eta_t\left(\frac{\hat m_t}{\sqrt{\hat v_t}+\epsilon}+\lambda\,\theta_t\right). \]
+<p>With plain L2 regularization inside Adam, the penalty gradient \(\lambda\theta\) would be divided by \(\sqrt{\hat v_t}\), so weights with large gradients would be regularized less. Decoupling restores uniform decay. Almost every method below inherits this "decoupled weight decay" convention.</p>
+<p>A useful consequence: with constant \(\eta\) and \(\lambda\), decay shrinks weights by \(1-\eta\lambda\) per step, so the weights forget their history over a time scale of \(\tau=1/(\eta\lambda)\) steps. Treat \(\tau\) (measured in steps or epochs) as the real hyperparameter; this idea recurs when we discuss transferring settings between model sizes (Chapter 23).</p>
+
+<h3>0.2 Why the field moved beyond Adam</h3>
+<p>Adam solved the problems of its time. Training large models then exposed new ones:</p>
+<ol>
+<li><strong>Instability and early-step variance.</strong> Adam needs warm-up and can diverge in the first steps. (RAdam, AdaBelief.)</li>
+<li><strong>Memory.</strong> Adam keeps two extra fp32 tensors per parameter, i.e. 8 bytes per parameter on top of the weights. For a 70-billion parameter model, that is 560 GB of optimizer state. (Adafactor, 8-bit optimizers, Adam-mini, GaLore, Lion.)</li>
+<li><strong>Large batches.</strong> Scaling the batch to tens of thousands of examples breaks Adam's learning-rate behaviour. (LARS, LAMB.)</li>
+<li><strong>Coordinate-wise geometry ignores structure.</strong> Adam rescales each coordinate separately, but a weight <em>matrix</em> has row/column structure. Preconditioning that respects the matrix (Shampoo, SOAP, Muon) can converge in fewer steps.</li>
+<li><strong>Curvature.</strong> Cheap curvature information might beat adaptive scaling by gradient magnitude. (Sophia.)</li>
+<li><strong>Tuning burden.</strong> A learning-rate schedule needs the training length in advance, and the peak learning rate needs a sweep. (Schedule-Free, Prodigy, D-Adaptation.)</li>
+<li><strong>Generalization.</strong> Flatter minima often generalize better. (SAM.)</li>
+<li><strong>Communication.</strong> Synchronizing gradients every step across data centers is costly. (DiLoCo.)</li>
+</ol>
+
+<h3>0.3 A map of the chapters</h3>
+<div class="tw"><table>
+<tr><th>Family</th><th>Methods</th><th>Main goal</th></tr>
+<tr><td>Fix Adam's weaknesses</td><td>RAdam, AdaBelief, Lookahead, Adan</td><td>stability, convergence quality</td></tr>
+<tr><td>Scale and memory</td><td>LARS, LAMB, Adafactor, CAME, 8-bit, Adam-mini, GaLore</td><td>large batches, fit bigger models</td></tr>
+<tr><td>New update rules</td><td>Lion, Sophia, AdEMAMix, Cautious</td><td>speed per step or per byte</td></tr>
+<tr><td>Matrix-aware</td><td>K-FAC, Shampoo, SOAP, Muon</td><td>fewer steps via better geometry</td></tr>
+<tr><td>Schedules and robustness</td><td>Schedule-Free, Prodigy, SAM, DiLoCo</td><td>less tuning, better generalization, less communication</td></tr>
+</table></div>
+
+<h3>0.4 Notation</h3>
+<p>\(g_t\) is the mini-batch gradient, \(\eta\) the learning rate, \(\lambda\) weight decay, \(\beta_i\) decay rates, \(m_t,v_t\) first/second moment EMAs, \(\odot\) element-wise product. For a weight matrix \(W\in\mathbb{R}^{m\times n}\), \(G\in\mathbb{R}^{m\times n}\) is its gradient, \(\|\cdot\|_F\) the Frobenius norm, \(\|\cdot\|_{op}\) the spectral (largest singular value) norm, and \(G=U\Sigma V^\top\) its singular value decomposition (SVD).</p>
+
+<!-- ============================================================ -->
+<h2 id="ch1">1. RAdam: rectified Adam</h2>
+
+<h3>1.1 The need</h3>
+<p>Adam often needs a learning-rate warm-up (a short ramp from near zero) to train stably, especially for transformers. Liu et al. (2019) asked why, and argued that early in training the <em>adaptive learning rate</em> \(1/\sqrt{\hat v_t}\) has problematically large variance, because \(\hat v_t\) is estimated from very few gradient samples.</p>
+
+<h3>1.2 The idea and the math</h3>
+<p>Model the gradients as i.i.d. zero-mean Gaussians. Then \(v_t\) is approximately a (scaled) average of \(\rho\) squared Gaussians, i.e. a scaled \(\chi^2\) variable, and \(1/\sqrt{v_t}\) is a scaled inverse-chi random variable. Its variance is finite only if the effective degrees of freedom exceed 4, and it is huge when the degrees of freedom are small. Define the length of the "simple moving average" that has the same centre of mass as the EMA:</p>
+\[ \rho_\infty=\frac{2}{1-\beta_2}-1,\qquad \rho_t=\rho_\infty-\frac{2t\,\beta_2^{\,t}}{1-\beta_2^{\,t}}. \]
+<p>Check: at \(t=1\), \(\rho_1=1\); for small \(t\), \(\rho_t\approx t\); and \(\rho_t\to\rho_\infty\approx1999\) when \(\beta_2=0.999\). RAdam derives a <strong>rectification term</strong> that rescales the adaptive step so that its variance matches the long-run variance:</p>
+\[ r_t=\sqrt{\frac{(\rho_t-4)(\rho_t-2)\,\rho_\infty}{(\rho_\infty-4)(\rho_\infty-2)\,\rho_t}}. \]
+<p>The algorithm:</p>
+<pre><code>compute m_t, v_t as in Adam; m_hat = m_t/(1-b1^t)
+rho_t = rho_inf - 2 t b2^t / (1 - b2^t)
+if rho_t > 4:                       # variance tractable: adaptive step, rectified
+    theta -= lr * r_t * m_hat / (sqrt(v_t/(1-b2^t)) + eps)
+else:                               # too few samples: un-adapted momentum step
+    theta -= lr * m_hat</code></pre>
+<div class="box intuition"><span class="t">Intuition</span>
+<p>While the second-moment estimate is untrustworthy, RAdam simply refuses to use it and acts like SGD with momentum. As the estimate matures, \(r_t\) rises smoothly from 0 toward 1 and the adaptive step fades in. It is an automatic warm-up whose length is tied to \(\beta_2\) (of order \(1/(1-\beta_2)\) steps).</p></div>
+
+<h3>1.3 Where it is used</h3>
+<p>Settings where Adam without warm-up is unstable: small-data transformers, GANs, some NLP and vision fine-tuning. It is available in PyTorch (<code>torch.optim.RAdam</code>) and in optax.</p>
+
+<h3>1.4 Drawbacks and challenges</h3>
+<ul>
+<li>The Gaussian i.i.d. assumption is crude; real gradients are heavy-tailed and correlated.</li>
+<li>Later empirical studies found that a short explicit warm-up with Adam often matches RAdam, and for large models people simply use warm-up plus Adam(W). RAdam did not displace the warm-up habit.</li>
+<li>It fixes only the early phase. It does not address memory, scaling, or late-training behaviour.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch2">2. AdaBelief</h2>
+
+<h3>2.1 The need</h3>
+<p>Adam divides by \(\sqrt{v_t}\), the RMS of the gradient. But RMS conflates two situations: a gradient that is consistently large (a confident, clear direction, should take a big step) and a gradient that is large because of noise (should take a small step). Adam shrinks the step in both cases. AdaBelief (Zhuang et al., 2020) wants to shrink the step only when the gradient is <em>surprising</em> relative to what the momentum predicted.</p>
+
+<h3>2.2 The math</h3>
+<p>Keep \(m_t\) as usual, treat it as the prediction of the next gradient, and replace the second moment by the EMA of the squared <em>prediction error</em>:</p>
+\[ s_t=\beta_2 s_{t-1}+(1-\beta_2)\,(g_t-m_t)^2+\epsilon,\qquad \theta_{t+1}=\theta_t-\eta\,\frac{\hat m_t}{\sqrt{\hat s_t}+\epsilon}. \]
+<p>Case analysis, per coordinate:</p>
+<ul>
+<li>\(g_t\approx m_t\) (gradients predictable): \(s_t\) small, step is large, even if \(|g|\) is big. This is the case Adam wrongly slows down: a steep, consistent slope.</li>
+<li>\(g_t\) far from \(m_t\) (noisy or surprising): \(s_t\) large, step small, as in Adam.</li>
+</ul>
+<p>Note \(s_t\) estimates the variance of the gradient, \(E[(g-E[g])^2]\), whereas \(v_t\) estimates the raw second moment \(E[g^2]=\mathrm{Var}(g)+E[g]^2\). So AdaBelief is Adam with the squared mean removed from the denominator.</p>
+
+<h3>2.3 Where it is used</h3>
+<p>Image classification, GANs (the authors report stability gains), and language-model fine-tuning where Adam converges slowly. It is a drop-in replacement with the same state as Adam (two tensors).</p>
+
+<h3>2.4 Drawbacks and challenges</h3>
+<ul>
+<li>The \(\epsilon\) is added <em>inside</em> the variance accumulator, so it plays a very different role than in Adam; the recommended values (for example \(10^{-8}\) versus \(10^{-16}\)) differ and results are sensitive to it.</li>
+<li>When gradients are consistent, the denominator can become tiny, so steps get large; this makes it more dependent on the learning rate and weight-decay choices, and sometimes less stable at high learning rates.</li>
+<li>Independent comparisons found the gains over well-tuned AdamW to be inconsistent.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch3">3. Lookahead and Ranger</h2>
+
+<h3>3.1 The need</h3>
+<p>Instead of changing the inner optimizer, Lookahead (Zhang et al., 2019) wraps <em>any</em> optimizer to reduce variance and improve robustness to hyperparameters.</p>
+<h3>3.2 The math</h3>
+<p>Maintain two sets of weights: <strong>fast weights</strong> \(\theta\) updated by an inner optimizer \(A\) (SGD, Adam, ...), and <strong>slow weights</strong> \(\phi\). Every \(k\) fast steps, move the slow weights toward the fast ones and reset the fast weights to the slow:</p>
+\[ \theta_{t,0}=\phi_{t-1},\quad \theta_{t,i}=\theta_{t,i-1}+A(\ldots)\ (i=1..k),\qquad \phi_t=\phi_{t-1}+\alpha\,(\theta_{t,k}-\phi_{t-1}). \]
+<p>Typical values: \(k=5\) to 10, \(\alpha=0.5\). The slow weights are an exponential moving average of "fast-weight checkpoints", so Lookahead is like a Polyak-style average that is also fed back into training. The fast weights explore, the slow weights stabilize. <strong>Ranger</strong> is the community combination RAdam + Lookahead.</p>
+<h3>3.3 Where it is used</h3>
+<p>Fine-tuning and small-scale vision/NLP training, Kaggle-style competitions, and situations where the inner optimizer is sensitive to its learning rate.</p>
+<h3>3.4 Drawbacks and challenges</h3>
+<ul>
+<li>Needs a second copy of the weights (memory) and adds two hyperparameters.</li>
+<li>Gains are modest and shrink with careful tuning of the base optimizer; it is rarely used for large-scale pretraining.</li>
+<li>Interacts awkwardly with batch-norm statistics and with evaluating "which weights": evaluate the slow weights.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch4">4. Adan</h2>
+
+<h3>4.1 The need</h3>
+<p>Nesterov momentum helps because it uses a gradient at an extrapolated point, which costs an extra gradient evaluation. Adan (Xie et al., 2022) obtains the Nesterov effect <em>without</em> a second gradient by approximating the look-ahead gradient with the difference between consecutive gradients.</p>
+<h3>4.2 The math</h3>
+<p>Nesterov's extrapolated gradient \(\nabla J(\theta_t+\mu(\theta_t-\theta_{t-1}))\) is approximately \(g_t+\mu\,(g_t-g_{t-1})\) (a first-order expansion, where \(g_t-g_{t-1}\) approximates a Hessian-vector product along the last step). Adan keeps three EMAs (using the paper's convention that the \(\beta\)'s are small):</p>
+\[ m_t=(1-\beta_1)m_{t-1}+\beta_1 g_t,\qquad d_t=(1-\beta_2)d_{t-1}+\beta_2(g_t-g_{t-1}), \]
+\[ n_t=(1-\beta_3)n_{t-1}+\beta_3\big[g_t+(1-\beta_2)(g_t-g_{t-1})\big]^2, \]
+\[ \theta_{t+1}=\frac{1}{1+\lambda\eta}\left(\theta_t-\eta\,\frac{m_t+(1-\beta_2)\,d_t}{\sqrt{n_t}+\epsilon}\right). \]
+<p>Here \(m_t\) is the gradient EMA, \(d_t\) the EMA of gradient <em>differences</em>, and \(n_t\) the second moment of the Nesterov-corrected gradient. The weight decay is applied in decoupled "proximal" form. Defaults reported: \(\beta_1=0.02,\ \beta_2=0.08,\ \beta_3=0.01\) (note these are \(1-\) the usual Adam values).</p>
+<h3>4.3 Where it is used</h3>
+<p>Vision (ViT, ResNet), diffusion models, and some language-model training; the authors report faster convergence than AdamW at the same step count.</p>
+<h3>4.4 Drawbacks and challenges</h3>
+<ul>
+<li>Must store the previous gradient: three states plus \(g_{t-1}\), i.e. about 4 extra tensors (more memory than Adam).</li>
+<li>Gradient differences amplify noise when batches are small; the benefit requires smooth-ish gradient sequences.</li>
+<li>Less adopted in large language-model pretraining where memory is the binding constraint.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch5">5. LARS and LAMB: large-batch training</h2>
+
+<h3>5.1 The need</h3>
+<p>Doubling the batch size should allow doubling the learning rate (linear scaling) while keeping the number of examples seen fixed. At very large batches (8k to 64k+), the single global learning rate that is safe for one layer is far too large for another, and training diverges or generalizes poorly. The reason is that the ratio of weight norm to gradient norm \(\|w^l\|/\|\nabla L(w^l)\|\) differs by orders of magnitude across layers.</p>
+<h3>5.2 LARS (You et al., 2017)</h3>
+<p>LARS (Layer-wise Adaptive Rate Scaling), for SGD with momentum, gives each layer \(l\) a <strong>trust ratio</strong>:</p>
+\[ \lambda^l=\frac{\eta_{\text{trust}}\,\|w^l\|}{\|\nabla L(w^l)\|+\beta\|w^l\|},\qquad \Delta w^l=\gamma\,\lambda^l\big(\nabla L(w^l)+\beta w^l\big). \]
+<p>The update has size proportional to the weight norm, \(\|\Delta w^l\|\approx\gamma\eta_{\text{trust}}\|w^l\|\): every layer changes by the same <em>relative</em> amount per step, regardless of its gradient scale. It enabled ResNet-50 training at batch sizes of 32k.</p>
+<h3>5.3 LAMB (You et al., 2019)</h3>
+<p>LARS works for SGD but not for attention models. LAMB applies the same layer-wise trust ratio on top of Adam's update:</p>
+\[ r_t=\frac{\hat m_t}{\sqrt{\hat v_t}+\epsilon},\qquad w^l_{t+1}=w^l_t-\eta_t\,\frac{\phi(\|w^l_t\|)}{\|r^l_t+\lambda w^l_t\|}\,\big(r^l_t+\lambda w^l_t\big), \]
+<p>where \(\phi\) is the identity or a clipping function. Each layer's Adam direction is renormalized so its length is proportional to the layer's weight norm. LAMB was used to train BERT with batch sizes up to 64k, cutting training from days to about an hour or so on large TPU pods.</p>
+<h3>5.4 Where they are used</h3>
+<p>Large-batch pretraining on big accelerator pods (BERT-scale encoders, ImageNet at massive batch). LAMB is in optax, DeepSpeed, and other libraries.</p>
+<h3>5.5 Drawbacks and challenges</h3>
+<ul>
+<li>Trust ratios are computed per tensor, so they need extra reductions (norm computations), which complicates fused or sharded implementations.</li>
+<li>Weights initialized near zero (biases, some norms) give a degenerate ratio; implementations usually exclude biases and normalization parameters, or fall back to ratio 1.</li>
+<li>For decoder language models at modern scales, plain AdamW with careful warm-up plus the batch/learning-rate scaling understood from the "critical batch size" literature is normally used instead; LAMB is rarely the default today.</li>
+<li>Large batches have an inherent limit: beyond the critical batch size, extra examples give diminishing returns, no optimizer fully removes this.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch6">6. Adafactor and CAME: sub-linear memory</h2>
+<h3>6.1 The need</h3>
+<p>Adam's second moment \(v_t\) is a full tensor the same size as the weights. For a matrix \(W\in\mathbb{R}^{m\times n}\) that is \(mn\) numbers. Adafactor (Shazeer and Stern, 2018, developed for T5) stores only \(m+n\).</p>
+<h3>6.2 The math: factored second moments</h3>
+<p>Accumulate row and column sums of the squared gradients:</p>
+\[ R_t=\hat\beta_{2,t}R_{t-1}+(1-\hat\beta_{2,t})\,(G_t^{\odot2}+\epsilon_1\mathbf 1\mathbf 1^\top)\mathbf 1_n\in\mathbb{R}^m, \]
+\[ C_t=\hat\beta_{2,t}C_{t-1}+(1-\hat\beta_{2,t})\,\mathbf 1_m^\top(G_t^{\odot2}+\epsilon_1\mathbf 1\mathbf 1^\top)\in\mathbb{R}^n, \]
+<p>and reconstruct a rank-1 approximation of the full second-moment matrix:</p>
+\[ \hat V_t=\frac{R_tC_t}{\mathbf 1_m^\top R_t}. \]
+<p>This is the rank-1, non-negative matrix that minimizes the generalized Kullback-Leibler divergence to the true second-moment matrix, which is why such a crude factorization works: the squared gradient entries of a weight matrix are strongly structured (some rows and some columns are consistently larger). Memory drops from \(O(mn)\) to \(O(m+n)\).</p>
+<p>Adafactor adds several stabilizers:</p>
+<ul>
+<li><strong>Decay schedule</strong> \(\hat\beta_{2,t}=1-t^{-0.8}\), so early steps average over all history (replacing Adam's bias correction).</li>
+<li><strong>Update clipping:</strong> \(\hat U_t=U_t/\max(1,\mathrm{RMS}(U_t)/d)\), with \(d\approx1\), limiting the step when the second-moment estimate is too small.</li>
+<li><strong>Relative step size:</strong> \(\alpha_t=\max(\epsilon_2,\mathrm{RMS}(\theta_{t-1}))\cdot\rho_t\) with \(\rho_t=\min(10^{-2},t^{-1/2})\); the step scales with the parameter's size.</li>
+<li><strong>No first moment by default</strong> (\(\beta_1=0\)): no momentum, saving the other full tensor.</li>
+</ul>
+<h3>6.3 CAME</h3>
+<p>CAME (Luo et al., 2023) observes that Adafactor's factorization can make the update noisy and slow, and adds a <em>confidence</em> term: the EMA of the squared deviation between the instantaneous and the momentum-averaged update, itself factored into row/column form. It keeps the memory at \(O(m+n)\) per matrix while recovering Adam-like quality in the authors' large-batch BERT and GPT-2 experiments.</p>
+<h3>6.4 Where they are used</h3>
+<p>Adafactor: T5 and other TPU-trained models, JAX/Flax/optax ecosystems, memory-limited fine-tuning (also in PyTorch, and Hugging Face). CAME: memory-efficient pretraining experiments.</p>
+<h3>6.5 Drawbacks and challenges</h3>
+<ul>
+<li>Without momentum, Adafactor can train worse than Adam; adding \(\beta_1>0\) restores quality but also the memory cost.</li>
+<li>Training with the relative-step schedule differs from the usual learning-rate schedule; many users instead supply their own \(\eta\), which makes it behave less predictably.</li>
+<li>Instability reports in large-model training; the update clipping exists for exactly this reason.</li>
+<li>Only matrices (and higher-order tensors) benefit; vectors and biases still store full state.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch7">7. 8-bit optimizers</h2>
+<h3>7.1 The need</h3>
+<p>Instead of removing optimizer state, store it in lower precision. Dettmers et al. (2021) showed Adam can keep both moments in 8 bits, reducing optimizer-state memory from 8 bytes to 2 bytes per parameter.</p>
+<h3>7.2 The math: quantization with dynamic range</h3>
+<p>Uniform 8-bit quantization is poor because optimizer states span many orders of magnitude. The method combines:</p>
+<ul>
+<li><strong>Block-wise quantization.</strong> Split the tensor into blocks (for example 2048 values), normalize each block by its own maximum: \(x_i\mapsto x_i/\max_j|x_j|\), quantize, and store the block maximum in 32 bits. An outlier damages only its block.</li>
+<li><strong>Dynamic (tree) quantization.</strong> Use a non-uniform 8-bit code with finer resolution near zero and a wider range, matching the heavy-tailed distribution of states.</li>
+<li><strong>Stable embedding layer.</strong> A normalized embedding with Xavier initialization and 32-bit states, because embeddings have extreme gradient statistics that destabilize low-precision states.</li>
+</ul>
+<p>Each step: dequantize the states, perform the Adam update in 32-bit, requantize. The weights and the update computation stay in high precision.</p>
+<h3>7.3 Where it is used</h3>
+<p>Fine-tuning and pretraining of large language models on limited hardware (the <code>bitsandbytes</code> library, <em>paged</em> optimizers that spill states to CPU memory to survive memory spikes, and 4-bit QLoRA-style fine-tuning recipes).</p>
+<h3>7.4 Drawbacks and challenges</h3>
+<ul>
+<li>Quantization error in the second moment can destabilize training; embeddings and a few tensors are kept in 32-bit.</li>
+<li>Dequantize/quantize adds compute, mitigated by fused kernels.</li>
+<li>Gains are in memory, not in convergence speed; it does nothing about the gradient and weights themselves.</li>
+<li>Hardware and software support is uneven (GPU kernels are the main target).</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch8">8. Adam-mini</h2>
+<h3>8.1 The need</h3>
+<p>Adam's second moment gives every parameter its own learning rate. Zhang et al. (2024) argue that this is wasteful, since the Hessian of a transformer is approximately block-diagonal, with blocks corresponding to layers, attention heads, and similar groups. Within a block, a single well-chosen learning rate is nearly as good as per-coordinate rates.</p>
+<h3>8.2 The idea</h3>
+<p>Partition the parameters into blocks following the Hessian structure (for example, one block per attention head for queries and keys, one per output neuron for MLPs, or the whole tensor for embeddings), and replace each block's \(v\) by a <em>single scalar</em>, the mean of the per-coordinate squared gradients in the block:</p>
+\[ v^{(b)}_t=\beta_2v^{(b)}_{t-1}+(1-\beta_2)\,\mathrm{mean}\big(g^{(b)}_t\odot g^{(b)}_t\big),\qquad \theta^{(b)}_{t+1}=\theta^{(b)}_t-\eta\,\frac{\hat m^{(b)}_t}{\sqrt{\hat v^{(b)}_t}+\epsilon}. \]
+<p>The momentum \(m\) is kept per-coordinate. The second moment shrinks by orders of magnitude, so total optimizer memory falls by roughly half (the authors report about 45 to 50 percent).</p>
+<h3>8.3 Where it is used and drawbacks</h3>
+<p><strong>Use:</strong> LLM pretraining and supervised fine-tuning when optimizer memory or communication is the bottleneck; reduced memory also raises throughput. <strong>Drawbacks:</strong> the partition rule depends on the architecture and needs to be written for each model family; it is a newer method with less independent validation; the first moment is still full-size.</p>
+
+<!-- ============================================================ -->
+<h2 id="ch9">9. GaLore: gradient low-rank projection</h2>
+<h3>9.1 The need</h3>
+<p>LoRA reduces memory by restricting the <em>weights</em> to a low-rank update, which limits expressiveness and can hurt pretraining. GaLore (Zhao et al., 2024) keeps full-rank weights but stores the optimizer states in a low-rank <em>gradient</em> subspace.</p>
+<h3>9.2 The math</h3>
+<p>For a weight matrix with gradient \(G\in\mathbb{R}^{m\times n}\) (assume \(m\le n\)), take the SVD \(G=U\Sigma V^\top\) and the top-\(r\) left singular vectors \(P=U_{[:,1:r]}\in\mathbb{R}^{m\times r}\). Project the gradient, run Adam in the small space, and project back:</p>
+\[ R_t=P^\top G_t\in\mathbb{R}^{r\times n},\qquad N_t=\mathrm{Adam}(R_t),\qquad W_{t+1}=W_t-\eta\,\alpha\,P\,N_t. \]
+<p>The Adam moments are \(r\times n\) rather than \(m\times n\): memory \(2nr\) instead of \(2mn\). The projector \(P\) is recomputed only every \(T\) steps (a few hundred) to amortize the SVD. The theoretical motivation: gradients of many layers become approximately low-rank during training, so most of the information fits in a small subspace.</p>
+<h3>9.3 Where it is used</h3>
+<p>Pretraining or fine-tuning LLMs on consumer GPUs; the authors demonstrated 7B-parameter pretraining on a single 24 GB GPU (combined with 8-bit states and per-layer updates). Related ideas include Q-GaLore (quantized projections) and APOLLO (cheaper random projections with SGD-like memory); verify the current variants before use.</p>
+<h3>9.4 Drawbacks and challenges</h3>
+<ul>
+<li>The SVD costs time and is a bottleneck for large layers; subspace refresh frequency \(T\) and rank \(r\) are new hyperparameters.</li>
+<li>When the subspace changes, the stored Adam moments refer to the old subspace and become stale.</li>
+<li>Only matrices are projected; embeddings and vectors keep full state.</li>
+<li>Low rank restricts each interval's update to a subspace, so for pretraining there is typically a quality gap relative to full-rank AdamW.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch10">10. Lion and sign-based methods</h2>
+<h3>10.1 Background: sign descent</h3>
+<p>signSGD (Bernstein et al., 2018) updates by \(-\eta\,\mathrm{sign}(g_t)\). The update has the same magnitude in every coordinate, discards the gradient scale entirely, and is cheap to communicate (one bit per coordinate). Signum adds momentum before taking the sign. Adam is close to a smoothed sign method when \(|\hat m|\approx\sqrt{\hat v}\), which is why sign descent was suspected as a good simple optimizer.</p>
+<h3>10.2 Lion (Chen et al., 2023)</h3>
+<p>Lion (EvoLved Sign Momentum) was found by symbolic program search over optimizer update rules, then simplified. The update:</p>
+\[ c_t=\beta_1 m_{t-1}+(1-\beta_1)g_t,\qquad \theta_{t+1}=\theta_t-\eta_t\big(\mathrm{sign}(c_t)+\lambda\theta_t\big),\qquad m_t=\beta_2m_{t-1}+(1-\beta_2)g_t. \]
+<p>Notice the two different EMA coefficients: \(c_t\) (with \(\beta_1=0.9\)) is used for the <em>step</em>, while the stored momentum \(m_t\) (with \(\beta_2=0.99\)) averages over a longer window. The step uses a fresher blend than the state.</p>
+<div class="box intuition"><span class="t">Consequences of the sign</span>
+<ul>
+<li><strong>Memory:</strong> one state tensor instead of two, so about half of AdamW's optimizer memory.</li>
+<li><strong>Update magnitude:</strong> every coordinate moves by exactly \(\eta\). A sign update has a larger per-coordinate RMS than Adam's (whose entries are usually below \(\eta\)), so Lion needs a learning rate roughly 3 to 10 times smaller and a weight decay correspondingly 3 to 10 times larger to keep the product \(\eta\lambda\) (the weight-decay timescale) comparable.</li>
+<li><strong>Insensitivity to gradient scale</strong>, like Adam, and no \(\epsilon\) to tune.</li>
+</ul></div>
+<h3>10.3 Where it is used</h3>
+<p>Vision transformers, vision-language models (the original paper's strongest gains), diffusion models, and as a memory-light alternative for LLM training. It is available in optax and in several PyTorch packages.</p>
+<h3>10.4 Drawbacks and challenges</h3>
+<ul>
+<li>Sign updates are noisy when batches are small; the benefit over AdamW grows with batch size (authors suggest at least 64) and shrinks or disappears in other settings.</li>
+<li>Hyperparameters do not transfer from AdamW without rescaling, and tuned AdamW baselines often match it, so the comparison depends heavily on tuning effort.</li>
+<li>The sign function discards curvature and magnitude information, so it cannot exploit structure the way matrix methods do.</li>
+<li>In low-precision training, tiny-update coordinates and sign flips can interact with rounding; check stability.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch11">11. Sophia: second-order, clipped</h2>
+<h3>11.1 The need</h3>
+<p>Adam's denominator measures gradient <em>magnitude</em>, which is only a proxy for curvature. Newton's method would divide by the actual Hessian. The problem: a full Hessian is impossible, and a diagonal Hessian can have negative or near-zero entries, so Newton steps can blow up. Sophia (Liu et al., 2023) uses a cheap diagonal Hessian estimate, refreshed infrequently, together with aggressive clipping.</p>
+<h3>11.2 The math</h3>
+<p>Keep an EMA \(m_t\) of gradients as in Adam and an EMA \(h_t\) of diagonal Hessian estimates \(\hat h\), updated only every \(k\) steps (e.g. \(k=10\)):</p>
+\[ h_t=\beta_2h_{t-k}+(1-\beta_2)\hat h_t\ \ (\text{every }k\text{ steps}),\qquad \theta_{t+1}=\theta_t-\eta\cdot\mathrm{clip}\!\left(\frac{m_t}{\max(\gamma h_t,\epsilon)},\,\rho\right). \]
+<p>Here \(\mathrm{clip}(z,\rho)=\max(\min(z,\rho),-\rho)\) element-wise. Where the curvature estimate is tiny or wrong the ratio is huge and the clip caps the step at \(\pm\eta\rho\) (a sign-like step); where curvature is reliable the step is Newton-like, with small steps in sharp directions and larger steps in flat ones. The two cheap diagonal Hessian estimators:</p>
+<ul>
+<li><strong>Hutchinson:</strong> for \(u\sim\mathcal N(0,I)\), \(\mathbb{E}[u\odot Hu]=\mathrm{diag}(H)\). One Hessian-vector product per estimate.</li>
+<li><strong>Gauss-Newton-Bartlett:</strong> sample labels \(\hat y\) from the model's own predictive distribution, take the gradient \(\hat g\) of the loss on those labels, and use \(\hat h=B\,\hat g\odot\hat g\) for batch size \(B\). This estimates the diagonal of the Gauss-Newton matrix, which is positive semidefinite.</li>
+</ul>
+<h3>11.3 Where it is used</h3>
+<p>LLM pretraining experiments (GPT-2 style models from 125M to 1.5B in the paper, with roughly 2x fewer steps claimed to reach the same loss than AdamW, and ~5 percent overhead because the Hessian is refreshed rarely).</p>
+<h3>11.4 Drawbacks and challenges</h3>
+<ul>
+<li>Extra hyperparameters (\(\gamma,\rho,k\)); \(\gamma\) especially needs tuning per model.</li>
+<li>Hutchinson needs a Hessian-vector product (double backward), which conflicts with fused attention kernels; Gauss-Newton-Bartlett needs an extra backward pass on sampled labels.</li>
+<li>Independent reproductions at larger scale and against tuned baselines have reported smaller or no gains. Verify before betting a training run on it.</li>
+<li>Diagonal curvature misses the off-diagonal structure that Shampoo-type methods exploit.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch12">12. AdEMAMix: two time scales of momentum</h2>
+<h3>12.1 The need</h3>
+<p>Adam's \(\beta_1=0.9\) averages gradients over about 10 steps. The authors of AdEMAMix (Pagliardini et al., 2024) argue that much older gradients (thousands of steps back) are still informative, but a single EMA with a long window reacts too slowly to recent changes. Using both solves the dilemma.</p>
+<h3>12.2 The math</h3>
+<p>Keep a fast EMA \(m^{(1)}\) (\(\beta_1=0.9\)), a slow EMA \(m^{(2)}\) (\(\beta_3\approx0.9999\), a window of about 10,000 steps), and the usual second moment:</p>
+\[ m^{(1)}_t=\beta_1m^{(1)}_{t-1}+(1-\beta_1)g_t,\quad m^{(2)}_t=\beta_3m^{(2)}_{t-1}+(1-\beta_3)g_t, \]
+\[ \theta_{t+1}=\theta_t-\eta\left(\frac{\hat m^{(1)}_t+\alpha\,m^{(2)}_t}{\sqrt{\hat v_t}+\epsilon}+\lambda\theta_t\right). \]
+<p>The mixing weight \(\alpha\) (of order 5 to 10) is large because \(m^{(2)}\) is a long average and has small magnitude per recent gradient. Both \(\alpha\) and \(\beta_3\) are <strong>warmed up</strong> from \(0\) and \(\beta_1\) respectively, since a long EMA is unreliable early and a large \(\alpha\) at the start destabilizes training.</p>
+<p>The authors report that a model trained on roughly half the tokens with AdEMAMix can match AdamW trained on many more, and that it forgets less of earlier data during training. (Verify the exact figures in the paper.)</p>
+<h3>12.3 Where it is used and drawbacks</h3>
+<p><strong>Use:</strong> LLM pretraining where data is plentiful and long training runs benefit from long-range gradient memory. <strong>Drawbacks:</strong> one more full-size state tensor (three in total, 50 percent more optimizer memory than Adam); two extra hyperparameters with schedules; benefits seem to come mostly with long training horizons; limited independent validation.</p>
+
+<!-- ============================================================ -->
+<h2 id="ch13">13. Cautious optimizers</h2>
+<h3>13.1 The need</h3>
+<p>Momentum can keep pushing a parameter in a direction that the <em>current</em> gradient says is uphill. These "stale momentum" steps temporarily increase the loss. Liang et al. (2024) propose a one-line fix that works with any momentum-based optimizer.</p>
+<h3>13.2 The math</h3>
+<p>Let \(u_t\) be the optimizer's proposed update (for example Adam's) and \(g_t\) the current gradient. Define the mask and rescaled update:</p>
+\[ \phi_t=\mathbb{1}\big[u_t\odot g_t>0\big],\qquad \tilde u_t=\phi_t\odot u_t\cdot\frac{\dim(\phi_t)}{\|\phi_t\|_1+1},\qquad \theta_{t+1}=\theta_t-\eta\,\tilde u_t. \]
+<p>Coordinates where the update and the gradient disagree in sign are zeroed; the survivors are rescaled so the overall step magnitude is preserved. Because every kept coordinate moves in a descent direction, the instantaneous loss decrease is guaranteed to be at least as large as for the unmasked update to first order, and the authors show it preserves the convergence properties of the base method (it keeps its Hamiltonian/Lyapunov structure).</p>
+<h3>13.3 Where it is used and drawbacks</h3>
+<p><strong>Use:</strong> wrap AdamW or Lion (C-AdamW, C-Lion) in LLM pretraining as a nearly free modification, with the authors reporting up to roughly 1.5x speedups in their experiments. <strong>Drawbacks:</strong> the mask uses the noisy mini-batch gradient, so when the batch is small it discards useful momentum; the speedup claims need independent confirmation; it interacts with weight decay (apply decay outside the mask).</p>
+
+<!-- ============================================================ -->
+<h2 id="ch14">14. K-FAC and the natural gradient</h2>
+<p>The matrix-aware optimizers (Shampoo, SOAP, Muon) are easier to understand after seeing the idea they build on.</p>
+<h3>14.1 The need</h3>
+<p>Plain gradient descent measures distance in parameter space. The natural gradient measures distance in <em>function</em> space: the steepest descent direction when distance is the KL divergence between model outputs. For a model with distribution \(p_\theta\), the Fisher information matrix is</p>
+\[ F=\mathbb{E}\big[\nabla_\theta\log p_\theta\,\nabla_\theta\log p_\theta^\top\big],\qquad \theta\leftarrow\theta-\eta\,F^{-1}\nabla J. \]
+<p>This is invariant to reparametrization and is tuned to the model's actual sensitivity. But \(F\) has \(d^2\) entries, which is impossible for \(d\) of millions.</p>
+<h3>14.2 K-FAC: Kronecker factorization (Martens and Grosse, 2015)</h3>
+<p>For a linear layer \(s=Wa\) with input activations \(a\) and back-propagated pre-activation gradients \(\delta=\partial J/\partial s\), the layer's weight gradient is \(\delta a^\top\). K-FAC approximates the layer's block of the Fisher as a Kronecker product of two small matrices:</p>
+\[ F_W\approx A\otimes S,\qquad A=\mathbb{E}[aa^\top]\ (n\times n),\quad S=\mathbb{E}[\delta\delta^\top]\ (m\times m). \]
+<p>The inverse of a Kronecker product is the Kronecker product of the inverses, so the preconditioned gradient is computed with two small inverses:</p>
+\[ \Delta W=-\eta\,(S+\sqrt{\mu}\,I)^{-1}\,\nabla_WJ\,(A+\sqrt{\mu}\,I)^{-1}, \]
+<p>with damping \(\mu\) for stability. This replaces one \(mn\times mn\) inverse by an \(m\times m\) and an \(n\times n\) one. The structural insight (a weight matrix's curvature is a Kronecker product of an "input side" and an "output side") is the same one that Shampoo exploits without needing activations.</p>
+<h3>14.3 Where it is used, drawbacks</h3>
+<p><strong>Use:</strong> scientific ML, small and medium networks, second-order research, and some reinforcement learning (it is a classic for ACKTR). <strong>Drawbacks:</strong> needs access to layer activations and back-propagated gradients (architecture-specific code), covers only some layer types (dense, convolution), requires damping tuning, matrix inverses are costly (amortized every \(T\) steps), and it is awkward in distributed LLM training. Libraries exist in JAX (<code>kfac-jax</code>) but it is not a mainstream default.</p>
+
+<!-- ============================================================ -->
+<h2 id="ch15">15. Shampoo</h2>
+<h3>15.1 The need</h3>
+<p>Adagrad's diagonal preconditioner ignores correlations between parameters. The <em>full-matrix</em> version, \(\theta\leftarrow\theta-\eta\,\big(\sum_s g_sg_s^\top\big)^{-1/2}g_t\), is better but requires a \(d\times d\) matrix. Shampoo (Gupta, Koren, Singer, 2018) is a structured approximation that exploits the fact that parameters are organized in tensors.</p>
+<h3>15.2 The math</h3>
+<p>For a weight matrix \(W\in\mathbb{R}^{m\times n}\) with gradient \(G_t\), keep two small statistics:</p>
+\[ L_t=L_{t-1}+G_tG_t^\top\in\mathbb{R}^{m\times m},\qquad R_t=R_{t-1}+G_t^\top G_t\in\mathbb{R}^{n\times n}, \]
+\[ W_{t+1}=W_t-\eta\,L_t^{-1/4}\,G_t\,R_t^{-1/4}. \]
+<p>Why the exponent \(-1/4\)? Full-matrix Adagrad uses the exponent \(-1/2\) on the covariance of the vectorized gradient. Shampoo approximates that covariance by the Kronecker product \(L^{1/2}\otimes R^{1/2}\) (suitably normalized), and applying the \(-1/2\) power to it gives \(L^{-1/4}\otimes R^{-1/4}\). Memory is \(m^2+n^2\) instead of \((mn)^2\).</p>
+<div class="box intuition"><span class="t">A key identity: a single Shampoo step is orthogonalization</span>
+<p>If there is no accumulation and \(L=GG^\top\), \(R=G^\top G\) with \(G=U\Sigma V^\top\), then \(L^{-1/4}=U\Sigma^{-1/2}U^\top\) and \(R^{-1/4}=V\Sigma^{-1/2}V^\top\) (on the range of \(G\)), so
+\[ L^{-1/4}GR^{-1/4}=U\Sigma^{-1/2}\Sigma\,\Sigma^{-1/2}V^\top=UV^\top. \]
+The update is the "polar factor" of the gradient: all singular values flattened to 1. This is exactly what Muon (Chapter 17) computes directly, which is the cleanest way to see how the two are related.</p></div>
+<h3>15.3 Making it practical (Distributed Shampoo)</h3>
+<ul>
+<li><strong>Matrix roots are expensive</strong> (eigendecomposition or coupled Newton iterations), so inverse roots are recomputed only every 10 to 100 steps and amortized, often asynchronously on CPUs or spread across devices.</li>
+<li><strong>Block partitioning:</strong> large tensors are split into blocks (say up to 1024 or 8192 per side) so the \(L,R\) matrices stay manageable.</li>
+<li><strong>Grafting:</strong> use Shampoo's direction but borrow the step <em>magnitude</em> from Adam or SGD, which lets existing learning-rate settings transfer.</li>
+<li><strong>EMA statistics:</strong> replace the sum by \(L_t=\beta L_{t-1}+(1-\beta)GG^\top\), as in RMSprop, for non-stationary training.</li>
+<li><strong>Precision:</strong> the statistics and roots are best kept in fp32 or even higher.</li>
+</ul>
+<h3>15.4 Where it is used</h3>
+<p>Large-scale recommendation and vision training at Google, and as a leading method on the MLCommons AlgoPerf training-algorithms benchmark (a Distributed Shampoo variant did best in the externally tuned track in 2024, as I recall; verify). Implementations: <code>optax</code> (<code>contrib</code>), Meta's Distributed Shampoo for PyTorch.</p>
+<h3>15.5 Drawbacks and challenges</h3>
+<ul>
+<li>Memory \(m^2+n^2\) per matrix and compute for roots: heavier than Adam, with a lot of engineering to make it efficient.</li>
+<li>Many hyperparameters: root update frequency, block size, damping, grafting type, \(\beta\) values.</li>
+<li>Numerical sensitivity of inverse roots in low precision.</li>
+<li>Applies cleanly to matrices; vectors and embeddings need the diagonal fallback.</li>
+<li>Staleness: roots computed every \(T\) steps lag behind, so large \(T\) loses benefits.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch16">16. SOAP</h2>
+<h3>16.1 The need</h3>
+<p>Shampoo's performance was hard to obtain and hard to tune. Vyas et al. (2024) noticed a precise connection: Shampoo's (idealized) update is equivalent to running <strong>Adafactor in the eigenbasis of Shampoo's preconditioner</strong>. So replace the Adafactor inside by full Adam.</p>
+<h3>16.2 The math</h3>
+<p>Maintain \(L=\mathbb{E}[GG^\top]\) and \(R=\mathbb{E}[G^\top G]\) as EMAs and compute their eigenvectors \(Q_L,Q_R\) only every \(f\) steps. At each step:</p>
+\[ G'_t=Q_L^\top G_tQ_R,\qquad (\text{run Adam on }G'_t:\ m',v'),\qquad N'_t=\frac{\hat m'_t}{\sqrt{\hat v'_t}+\epsilon},\qquad W_{t+1}=W_t-\eta\,Q_LN'_tQ_R^\top. \]
+<p>The eigenbasis is a slowly changing rotation that aligns coordinates with the gradient's principal directions; Adam then does its per-coordinate normalization in the rotated frame, where the diagonal approximation is much better than in the original frame. The only additional hyperparameter compared with AdamW is the preconditioning frequency \(f\). Between refreshes the Adam moments stay in the old basis; when the basis is refreshed, SOAP rotates the moments to match.</p>
+<h3>16.3 Where it is used and drawbacks</h3>
+<p><strong>Use:</strong> LLM pretraining and other settings where reduced step counts matter more than per-step overhead; the authors report more than 35 percent fewer iterations and about 20 percent less wall-clock time than AdamW on 360M and 660M models (verify). <strong>Drawbacks:</strong> memory is above Adam's (\(m^2+n^2\) for \(L,R\) plus eigenvector matrices), per-step cost is higher (rotations are matrix multiplies), eigendecompositions are periodic spikes, and benefit at very large scale is still being tested.</p>
+
+<!-- ============================================================ -->
+<h2 id="ch17">17. Muon</h2>
+<h3>17.1 The need</h3>
+<p>Take Shampoo's idea (the useful part of the preconditioner is just "flatten the singular values of the gradient matrix") and compute it directly, without accumulating statistics, using cheap matrix multiplications. Muon (Keller Jordan et al., 2024, developed in public speed-run experiments on small GPT models) does this for the <em>hidden weight matrices</em> of a network.</p>
+<h3>17.2 The update</h3>
+<p>Given a matrix gradient \(G_t\) and momentum \(\mu\approx0.95\):</p>
+\[ M_t=\mu M_{t-1}+G_t,\qquad O_t=\mathrm{Orth}(M_t)\approx UV^\top\ \ (\text{where }M_t=U\Sigma V^\top),\qquad W_{t+1}=W_t-\eta\,s\,O_t, \]
+<p>where \(s\) is a shape-dependent scale, and often Nesterov-style momentum and decoupled weight decay are added. \(O_t\) is the nearest semi-orthogonal matrix to the momentum: same singular vectors, all singular values set to 1.</p>
+<h3>17.3 Why orthogonalize: steepest descent under the spectral norm</h3>
+<p>Consider the linearized problem of choosing the best update under a constraint on its size:</p>
+\[ \min_{\|\Delta\|_{op}\le1}\ \langle G,\Delta\rangle\ =\ -\|G\|_{*}\quad\text{attained at }\Delta^\star=-UV^\top, \]
+<p>where \(\|\cdot\|_*\) is the nuclear norm. So Muon is steepest descent when the step is measured by the <strong>spectral norm</strong> (largest singular value) instead of the Frobenius norm that plain SGD implicitly uses. The spectral norm of an update bounds how much it can change the layer's output for a unit input, so this is the natural size to control for a linear layer: each step changes the layer by at most \(\eta\) in output per unit-norm input, in the worst direction.</p>
+<div class="box intuition"><span class="t">Why gradients need flattening</span>
+<p>Gradients of weight matrices are typically dominated by a few large singular directions (low effective rank), so plain momentum keeps pushing along those and barely moves the rest. Orthogonalization boosts the neglected, small-singular-value directions, giving more balanced progress over the matrix's whole spectrum.</p></div>
+
+<h3>17.4 Computing \(UV^\top\) cheaply: Newton-Schulz iteration</h3>
+<p>An SVD of every weight matrix at every step would be too slow. Newton-Schulz applies a matrix polynomial that pushes singular values toward 1. Normalize \(X_0=M/\|M\|_F\) (so singular values are at most 1), then iterate. The classical cubic form:</p>
+\[ X_{k+1}=\tfrac12X_k\big(3I-X_k^\top X_k\big). \]
+<p>Acting on a singular value \(\sigma\), this is the scalar map \(\sigma\mapsto\tfrac12(3\sigma-\sigma^3)\), whose fixed point at 1 is attracting. Muon uses a tuned <em>quintic</em> that converges faster at the price of not hitting exactly 1:</p>
+\[ X_{k+1}=aX_k+b\,(X_kX_k^\top)X_k+c\,(X_kX_k^\top)^2X_k,\quad (a,b,c)=(3.4445,\,-4.7750,\,2.0315), \]
+<p>run for about 5 iterations in bfloat16. The coefficients are chosen to maximize the slope at 0 (so tiny singular values grow fast), accepting that final singular values land in roughly the range 0.7 to 1.2 rather than exactly 1. The cost: a handful of matrix multiplications per weight matrix per step, roughly a small percentage of the training FLOPs.</p>
+
+<h3>17.5 Practical rules</h3>
+<ul>
+<li><strong>Use Muon only for 2D hidden-layer weight matrices.</strong> Embeddings, the output head, scalar gains, biases, and normalization parameters are trained with AdamW (a "hybrid" optimizer). Convolution kernels are reshaped to matrices.</li>
+<li><strong>Scale.</strong> Because \(\|UV^\top\|_F=\sqrt{\min(m,n)}\), update magnitude depends on shape. Two conventions: scale by \(\sqrt{\max(1,m/n)}\), or (Moonshot AI, 2025) by \(0.2\sqrt{\max(m,n)}\) so the update's RMS matches AdamW's and AdamW's learning rate and weight decay can be reused. They also found weight decay important for scaling Muon to large models.</li>
+<li>In the Moonshot "Kimi K2" training (2025), Muon was combined with a QK-clip safeguard (MuonClip) to control exploding attention logits. I recall this from the release; verify details.</li>
+</ul>
+
+<h3>17.6 Where it is used</h3>
+<p>Pretraining of transformers, from the public NanoGPT speed-run records through to reported large-scale runs; also research on distributed variants (for example Microsoft's Dion, which reduces the communication of orthogonalizing sharded matrices; verify). Library support: optax (<code>contrib</code>), PyTorch ecosystem packages, and recent PyTorch releases may include it; check current docs.</p>
+
+<h3>17.7 Drawbacks and challenges</h3>
+<ul>
+<li><strong>Matrix-only.</strong> A second optimizer (AdamW) is still needed for everything else, complicating configuration, and the learning rate of the two parts must be matched.</li>
+<li><strong>Distributed implementation.</strong> Orthogonalization needs the whole matrix, but in tensor-parallel or FSDP training each device holds a shard. Gathering the matrix is communication-heavy; this is an active engineering problem.</li>
+<li><strong>Fine-tuning mismatch.</strong> Models pretrained with AdamW tend to be fine-tuned best with AdamW, and models pretrained with Muon with Muon; mixing them can lose quality.</li>
+<li><strong>Numerics:</strong> bfloat16 Newton-Schulz yields approximate orthogonality; matrices with very different aspect ratios or tiny singular values need care.</li>
+<li><strong>Stability:</strong> the strong updates can inflate attention logits, motivating clipping variants.</li>
+<li><strong>Evidence:</strong> speedups reported at small scale appear smaller (about 1.1 to 1.4x) when baselines are tuned and models grow (see Chapter 24).</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch18">18. The norm view: one framework for many optimizers</h2>
+<p>Chapters 10 and 17 hint at a unifying principle: <em>every first-order optimizer is steepest descent under some norm</em>. Given gradient \(g\), choose the step as</p>
+\[ \Delta=\arg\min_{\|\Delta\|\le\eta}\langle g,\Delta\rangle. \]
+<div class="tw"><table>
+<tr><th>Norm on the update</th><th>Resulting step</th><th>Optimizer</th></tr>
+<tr><td>\(\ell_2\) (Euclidean / Frobenius)</td><td>\(-\eta\,g/\|g\|_2\)</td><td>SGD (with momentum)</td></tr>
+<tr><td>\(\ell_\infty\) (per coordinate)</td><td>\(-\eta\,\mathrm{sign}(g)\)</td><td>signSGD, Lion (and roughly Adam)</td></tr>
+<tr><td>Spectral norm (matrix)</td><td>\(-\eta\,UV^\top\)</td><td>Muon (and a single Shampoo step)</td></tr>
+<tr><td>Norm weighted by curvature/Fisher</td><td>\(-\eta\,F^{-1}g\)</td><td>natural gradient, K-FAC, Sophia (diag.)</td></tr>
+</table></div>
+<p>Recent work (Bernstein and Newhouse, "Old optimizer, new norm"; Pethick et al., Scion, 2025) pushes this further: assign each layer type a norm that reflects how that layer's weights act on activations (spectral norm for hidden matrices, \(\ell_\infty\)-type norms for embeddings and output layers), and use a linear minimization oracle to derive the update. A side benefit is that learning rates can be made transferable across width and depth, because the norms are chosen to control the actual function change. This view is a useful design tool: to invent an optimizer, ask <em>what size of update do I want to bound, and in which norm?</em></p>
+<div class="box verify"><span class="t">Verify</span>
+<p>This is a fast-moving research area; the framing above is stable, but the specific named methods and their reported results are recent and may have changed.</p></div>
+
+<!-- ============================================================ -->
+<h2 id="ch19">19. Schedule-Free optimization</h2>
+<h3>19.1 The need</h3>
+<p>Good training needs a learning-rate schedule that decays to near zero at the end, but a schedule needs the total number of steps \(T\) in advance. A run cannot be extended, and stopping early gives a poor model. Averaging iterates (Polyak-Ruppert averaging) gives the benefits of decay without a schedule in theory, but standard averaging performs worse in practice than a tuned schedule. Defazio et al. (2024) reconcile the two.</p>
+<h3>19.2 The math</h3>
+<p>Maintain three sequences: the base iterate \(z_t\), the average \(x_t\), and the point \(y_t\) at which the gradient is evaluated, an interpolation between them:</p>
+\[ y_t=(1-\beta)\,z_t+\beta\,x_t,\qquad z_{t+1}=z_t-\gamma\,\nabla J(y_t),\qquad x_{t+1}=(1-c_{t+1})\,x_t+c_{t+1}\,z_{t+1},\quad c_{t+1}=\frac{1}{t+1}. \]
+<p>The final model is \(x_t\), the running average of \(z\). The interpolation in \(y_t\) provides momentum-like behaviour (\(\beta\approx0.9\)) while the averaging provides the effect of a decayed learning rate, with <strong>constant</strong> \(\gamma\). For the Adam-based version (<code>AdamWScheduleFree</code>), \(\nabla J(y_t)\) is replaced by Adam's normalized gradient, and a warm-up of a small number of steps is still recommended.</p>
+<div class="box intuition"><span class="t">Intuition</span>
+<p>A decaying learning rate shrinks the noise in the iterates. Averaging does the same thing differently: it cancels noise across steps. Evaluating the gradient at a point \(y\) between the iterate and its average keeps training stable while the average is being formed.</p></div>
+<h3>19.3 Where it is used</h3>
+<p>Any setting where the training horizon is not known in advance, continual or open-ended training, hyperparameter sweeps (no schedule to tune), and as a strong "just works" baseline. A Schedule-Free AdamW won the self-tuning track of the AlgoPerf benchmark in 2024, as I recall (verify).</p>
+<h3>19.4 Drawbacks and challenges</h3>
+<ul>
+<li>Evaluation and checkpointing must use \(x_t\), not \(y_t\) or \(z_t\); the library requires explicit <code>optimizer.train()</code> / <code>optimizer.eval()</code> calls. Forgetting this gives wrong metrics.</li>
+<li>Batch-norm running statistics must be recomputed at the averaged weights.</li>
+<li>Memory: one additional buffer relative to the underlying optimizer (the iterate and the average are both stored).</li>
+<li>Peak learning rates are typically larger than with a schedule, and interacting with weight decay needs care; a short warm-up is still useful.</li>
+<li>Large-scale LLM pretraining adoption is limited; carefully tuned cosine or WSD schedules remain the default there.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch20">20. Parameter-free methods: D-Adaptation and Prodigy</h2>
+<h3>20.1 The need</h3>
+<p>Convex optimization theory says the optimal step size depends on \(D=\|\theta_0-\theta^\star\|\), the distance from the start to the solution, which is unknown. D-Adaptation (Defazio and Mishchenko, 2023) estimates \(D\) on the fly from the observed gradients, with no learning-rate search. Prodigy (Mishchenko and Defazio, 2023) is a faster-growing estimator for Adam-like methods.</p>
+<h3>20.2 The idea</h3>
+<p>Run a dual-averaging-style method whose step is \(\eta_t\propto d_t/\sqrt{\sum_s\|g_s\|^2}\) (Adagrad-like), where \(d_t\) is a <em>non-decreasing lower bound</em> on \(D\) computed from the correlation between past gradients and the movement so far: if the iterates are still moving consistently in directions the gradients support, the bound on \(D\) must be larger. Prodigy applies the estimate inside an Adam-like update, and adds a scheme that accelerates the growth of \(d_t\). Users set the nominal learning rate to 1.0 and let the algorithm discover the scale.</p>
+<h3>20.3 Where it is used</h3>
+<p>Fine-tuning diffusion and LoRA models (very common in the image-generation community), small to medium models, and rapid experimentation when a sweep is too costly. DoG (Distance over Gradients) and DoWG are related methods.</p>
+<h3>20.4 Drawbacks and challenges</h3>
+<ul>
+<li>The estimate starts small and only grows, so early training may be slow; overestimates can cause instability.</li>
+<li>Adam-style versions still need other hyperparameters (\(\beta\)'s, weight decay) and usually a schedule; they remove one hyperparameter, not all.</li>
+<li>Extra state and norm computations.</li>
+<li>For large-scale pretraining with well-known recipes, a tuned AdamW is typically preferred.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch21">21. SAM and the flat-minima family</h2>
+<h3>21.1 The need</h3>
+<p>Models that sit in flat regions of the loss tend to generalize better: a small perturbation of the weights changes the loss little. Sharpness-Aware Minimization (Foret et al., 2021) minimizes the worst-case loss in a neighbourhood, not just the loss at a point.</p>
+<h3>21.2 The math</h3>
+\[ \min_\theta\ \max_{\|\epsilon\|_2\le\rho}J(\theta+\epsilon). \]
+<p>The inner maximum is approximated with a first-order Taylor expansion: \(J(\theta+\epsilon)\approx J(\theta)+\epsilon^\top\nabla J(\theta)\), maximized by pointing \(\epsilon\) along the gradient:</p>
+\[ \hat\epsilon=\rho\,\frac{\nabla J(\theta)}{\|\nabla J(\theta)\|_2}. \]
+<p>Then update using the gradient <em>at the perturbed point</em>, \(\theta\leftarrow\theta-\eta\,\nabla J(\theta+\hat\epsilon)\) (and any base optimizer, such as SGD with momentum or AdamW, can consume this gradient). So each step costs two forward-backward passes: one to find the ascent direction, one to compute the update gradient.</p>
+<p>Variants: <strong>ASAM</strong> (adaptive, scale-invariant neighbourhood), <strong>GSAM</strong> (surrogate gap), <strong>ESAM</strong> and <strong>LookSAM</strong> (cheaper, reuse the perturbation direction), and "\(m\)-sharpness" where the perturbation is computed per sub-batch (important in data-parallel training).</p>
+<h3>21.3 Where it is used</h3>
+<p>Image classification (especially ViTs and small datasets), fine-tuning, noisy-label settings, and any task where generalization rather than training loss is the bottleneck.</p>
+<h3>21.4 Drawbacks and challenges</h3>
+<ul>
+<li><strong>2x compute</strong> per step.</li>
+<li>\(\rho\) is a sensitive new hyperparameter (typical 0.05); the right value shifts with batch size, architecture, and optimizer.</li>
+<li>The link between sharpness and generalization is not universal: sharpness is not invariant to reparametrization, and counterexamples exist.</li>
+<li>Rarely used in LLM pretraining, where the data are so large that overfitting is not the limiting problem.</li>
+<li>Interaction with batch normalization and with large data-parallel batches needs care.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch22">22. DiLoCo and local-update methods</h2>
+<h3>22.1 The need</h3>
+<p>Standard data-parallel training synchronizes gradients every step and so needs very fast interconnects. Training across weakly connected clusters or data centers needs far fewer synchronizations. DiLoCo (Douillard et al., 2023, "Distributed Low-Communication") builds on <em>local SGD</em> and federated averaging.</p>
+<h3>22.2 The math</h3>
+<p>Each of \(k\) workers starts from the shared weights \(\theta^{(t)}\) and runs \(H\) (hundreds of) local steps of an <strong>inner optimizer</strong> (AdamW), reaching \(\theta^{(t)}_i\). Their average displacement is treated as a "pseudo-gradient":</p>
+\[ \Delta^{(t)}=\theta^{(t)}-\frac1k\sum_{i=1}^k\theta^{(t)}_i,\qquad \theta^{(t+1)}=\mathrm{OuterOpt}\big(\theta^{(t)},\Delta^{(t)}\big). \]
+<p>The <strong>outer optimizer</strong> is typically SGD with Nesterov momentum (the authors report outer learning rate about 0.7 and momentum 0.9). Communication happens once every \(H\) steps, a reduction of about \(H\times\) in communication volume.</p>
+<h3>22.3 Where it is used</h3>
+<p>Geographically distributed or heterogeneous-cluster pretraining, federated settings, and low-bandwidth environments. Follow-ups (streaming DiLoCo, scaling-law studies of DiLoCo, overlapped communication) aim to hide communication fully; verify the current state.</p>
+<h3>22.4 Drawbacks and challenges</h3>
+<ul>
+<li>Worse sample efficiency than fully synchronous training at equal total tokens, in general; the gap grows with \(H\) and the number of workers.</li>
+<li>The outer optimizer introduces new hyperparameters whose best values depend on \(H\) and \(k\).</li>
+<li>Workers drift apart during the local phase; inner optimizer states and what to do with them at synchronization (reset or keep) matter.</li>
+</ul>
+<p>Related communication-saving ideas: 1-bit Adam and 1-bit LAMB compress the communicated gradients after a warm-up in which the second moment stabilizes; ZeRO and FSDP shard optimizer states (they change <em>where</em> state lives, not the algorithm, but they constrain which optimizers are easy to implement, which is why Shampoo and Muon need special engineering).</p>
+
+<!-- ============================================================ -->
+<h2 id="ch23">23. A practical modern training recipe</h2>
+<p>Algorithms are only half of the picture; modern training stacks them with schedules, scaling rules, and stabilizers.</p>
+<h3>23.1 The default LLM recipe</h3>
+<p>The following are typical values that appear across many recent open-model reports; treat them as a starting point.</p>
+<div class="tw"><table>
+<tr><th>Item</th><th>Typical setting</th><th>Why</th></tr>
+<tr><td>Optimizer</td><td>AdamW</td><td>strong baseline, robust</td></tr>
+<tr><td>\(\beta_1,\beta_2\)</td><td>0.9, 0.95 (not 0.999)</td><td>lower \(\beta_2\) adapts faster to non-stationary loss spikes</td></tr>
+<tr><td>\(\epsilon\)</td><td>\(10^{-8}\) (or larger in low precision)</td><td>avoids underflow when \(\sqrt v\) is tiny</td></tr>
+<tr><td>Weight decay</td><td>0.1 (not on biases or norm gains)</td><td>sets the weight timescale</td></tr>
+<tr><td>Gradient clipping</td><td>global norm 1.0</td><td>blocks loss spikes</td></tr>
+<tr><td>Warm-up</td><td>hundreds to thousands of steps</td><td>second-moment estimate is poor initially</td></tr>
+<tr><td>Decay</td><td>cosine, or linear, or WSD, to ~10% or 0</td><td>noise reduction at the end</td></tr>
+</table></div>
+<h3>23.2 Schedules after cosine</h3>
+<ul>
+<li><strong>Warmup-Stable-Decay (WSD).</strong> Linear warm-up, a long constant-learning-rate plateau, then a short rapid decay (often the final 10-20 percent). Unlike cosine, you can branch off a decay from any checkpoint on the plateau to produce a finished model, and continue the plateau for more data. Popularized by MiniCPM and used by several open models.</li>
+<li><strong>Linear decay to zero</strong> (Defazio et al.) performs very well, supported by theory in the convex setting, and is a simple strong alternative.</li>
+<li><strong>Averaging plus constant LR</strong> (Schedule-Free, EMA of weights) as in Chapter 19.</li>
+</ul>
+<h3>23.3 Transferring hyperparameters across scale</h3>
+<p>Tuning a billion-parameter model is expensive. <strong>\(\mu\)P (maximal update parametrization, Yang et al.)</strong> reparametrizes initialization and per-layer learning rates so that the optimal learning rate stays roughly constant as width increases: tune on a small model, then transfer. The related norm-based view (Chapter 18) explains why: control the update size in the right norm per layer. Also, measure weight decay in terms of its timescale \(1/(\eta\lambda)\) in epochs or tokens: when moving to a bigger model or a different batch size, keep that timescale rather than \(\lambda\) itself.</p>
+<h3>23.4 Stability tools</h3>
+<ul>
+<li>Gradient clipping; skipping updates on extreme loss spikes.</li>
+<li>QK-normalization and logit soft-capping to keep attention logits bounded (relevant especially for aggressive optimizers like Muon).</li>
+<li>Auxiliary z-loss to keep output logits from drifting.</li>
+<li>Keep optimizer states and master weights in fp32 when training in bf16/fp16; check \(\epsilon\) against the precision of \(v\).</li>
+<li>Batch size should respect the critical batch size; scale learning rates with batch size by a square-root or linear rule depending on the optimizer (square-root scaling is the rule suggested for Adam-like methods).</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="ch24">24. Benchmarking honestly</h2>
+<p>Many optimizer papers report large speedups over Adam. Why are the results hard to trust?</p>
+<ul>
+<li><strong>Under-tuned baselines.</strong> A new method with carefully swept hyperparameters is compared with AdamW at default settings. Tuning AdamW's learning rate, \(\beta_2\), warm-up and weight decay can erase most of a claimed 2x gain.</li>
+<li><strong>Scale.</strong> Gains measured on 100M-parameter models often shrink on billion-parameter models. A 2025 large study of pretraining optimizers (Wen et al., "Fantastic pretraining optimizers and where to find them") reported that matrix-based methods (Muon, SOAP, Kron) gave speedups over a well-tuned AdamW of roughly 1.3x on small models and about 1.1x around 1B parameters (verify the numbers).</li>
+<li><strong>Wall-clock versus steps.</strong> A method that needs 30 percent fewer steps but 40 percent more time per step is a loss. Report both.</li>
+<li><strong>Tuning budget.</strong> Optimizers with more hyperparameters are favoured when each gets a sweep. Schmidt et al. ("Descending through a crowded valley") found that with a tuning budget, no optimizer clearly beat Adam across tasks, and that the choice mattered less than the tuning.</li>
+<li><strong>Different metrics.</strong> Training loss, validation loss, and downstream accuracy do not always agree; schedules and batch size change the ranking.</li>
+<li><strong>Benchmarks:</strong> MLCommons AlgoPerf (fixed workloads, time-to-target, external-tuning and self-tuning tracks) is the closest to a fair, repeatable comparison.</li>
+</ul>
+<div class="box pitfall"><span class="t">How to test a new optimizer yourself</span>
+<p>(1) Tune the baseline as hard as the new method: learning rate (log-grid), weight decay, \(\beta_2\), warm-up, schedule. (2) Match total tokens, batch size, and hardware; report wall-clock. (3) Run at least two scales to see the trend. (4) Use several seeds; speedups under 5 percent are often noise. (5) Check hyperparameter sensitivity, not only the best run.</p></div>
+
+<!-- ============================================================ -->
+<h2 id="ch25">25. Comparison and decision guide</h2>
+<h3>25.1 Memory and compute summary</h3>
+<p>Extra state beyond the weights, in multiples of parameter count \(P\) (before precision effects). For a model of 1B parameters with fp32 states, one tensor costs 4 GB.</p>
+<div class="tw"><table>
+<tr><th>Optimizer</th><th>State</th><th>Compute overhead</th><th>Key hyperparameters</th></tr>
+<tr><td>AdamW (baseline)</td><td>2P</td><td>low</td><td>\(\eta,\beta_1,\beta_2,\lambda,\epsilon\)</td></tr>
+<tr><td>RAdam</td><td>2P</td><td>low</td><td>as Adam</td></tr>
+<tr><td>AdaBelief</td><td>2P</td><td>low</td><td>as Adam, small \(\epsilon\)</td></tr>
+<tr><td>Lookahead</td><td>base + P</td><td>low</td><td>\(k,\alpha\)</td></tr>
+<tr><td>Adan</td><td>about 4P</td><td>low to moderate</td><td>three \(\beta\)</td></tr>
+<tr><td>LAMB / LARS</td><td>2P / P</td><td>low (norm reductions)</td><td>\(\eta\), trust clip</td></tr>
+<tr><td>Adafactor</td><td>about 0 to P (factored)</td><td>low</td><td>decay, clip, relative step</td></tr>
+<tr><td>8-bit Adam</td><td>2P at 1 byte</td><td>low (fused)</td><td>as Adam</td></tr>
+<tr><td>Adam-mini</td><td>about P</td><td>low</td><td>as Adam, partition rule</td></tr>
+<tr><td>GaLore</td><td>about \(2rn\) per matrix</td><td>SVD every \(T\) steps</td><td>rank \(r\), \(T\), scale \(\alpha\)</td></tr>
+<tr><td>Lion</td><td>P</td><td>low</td><td>\(\eta\) (smaller), \(\lambda\) (larger), \(\beta_1,\beta_2\)</td></tr>
+<tr><td>Sophia</td><td>2P</td><td>Hessian estimate every \(k\) steps</td><td>\(\gamma,\rho,k\)</td></tr>
+<tr><td>AdEMAMix</td><td>3P</td><td>low</td><td>\(\alpha,\beta_3\) (with warm-up)</td></tr>
+<tr><td>Cautious (C-AdamW)</td><td>as base</td><td>negligible</td><td>none new</td></tr>
+<tr><td>Shampoo</td><td>\(\sum(m^2+n^2)\) + grafting state</td><td>high, amortized roots</td><td>block size, root frequency, damping</td></tr>
+<tr><td>SOAP</td><td>2P + \(\sum(m^2+n^2)\) + eigenvectors</td><td>moderate to high</td><td>preconditioning frequency</td></tr>
+<tr><td>Muon</td><td>P (+ AdamW for non-matrices)</td><td>about 5 matmuls per matrix per step</td><td>\(\eta\), \(\mu\), scale rule, \(\lambda\)</td></tr>
+<tr><td>Schedule-Free AdamW</td><td>about 3P</td><td>negligible</td><td>\(\eta\), \(\beta\), warm-up</td></tr>
+<tr><td>Prodigy</td><td>about 3P+</td><td>low</td><td>(lr = 1), \(\beta\)'s</td></tr>
+<tr><td>SAM</td><td>base</td><td>2x passes</td><td>\(\rho\)</td></tr>
+<tr><td>DiLoCo</td><td>base + outer buffers</td><td>none, saves communication</td><td>\(H\), outer \(\eta\) and momentum</td></tr>
+</table></div>
+
+<h3>25.2 Decision guide</h3>
+<div class="tw"><table>
+<tr><th>Your situation</th><th>Reasonable choices</th></tr>
+<tr><td>You want a robust default for transformers</td><td>AdamW with the Chapter 23 recipe</td></tr>
+<tr><td>Optimizer memory is the bottleneck</td><td>8-bit Adam, Adam-mini, Lion, Adafactor; GaLore if desperate</td></tr>
+<tr><td>Fine-tuning a big model on one GPU</td><td>8-bit/paged AdamW, LoRA, possibly GaLore</td></tr>
+<tr><td>Very large batch, many accelerators</td><td>LAMB (encoders), AdamW with batch-scaling rules (LLMs)</td></tr>
+<tr><td>Pretraining and willing to engineer for fewer steps</td><td>Muon (hybrid with AdamW), SOAP, Distributed Shampoo</td></tr>
+<tr><td>Unknown training length, minimal tuning</td><td>Schedule-Free AdamW, WSD</td></tr>
+<tr><td>No time to sweep learning rate (LoRA, diffusion)</td><td>Prodigy, D-Adaptation</td></tr>
+<tr><td>Overfitting is the problem, vision or small data</td><td>SAM (or ASAM), strong regularization</td></tr>
+<tr><td>Early-phase instability with Adam</td><td>Warm-up first; then RAdam if still needed</td></tr>
+<tr><td>Cross-data-center training</td><td>DiLoCo or local-update variants</td></tr>
+<tr><td>Want cheap extra speed on top of AdamW or Lion</td><td>Cautious wrapper, AdEMAMix (long runs)</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="ch26">26. Exercises</h2>
+<p>Try each before opening the answer.</p>
+
+<div class="box ex"><span class="t">Exercise 1: RAdam</span>
+<p>With \(\beta_2=0.999\), compute \(\rho_\infty\) and \(\rho_1\). Does RAdam use the adaptive term at step 1?</p>
+<details><summary>Answer</summary><p>\(\rho_\infty=2/0.001-1=1999\). \(\rho_1=1999-2\cdot1\cdot0.999/0.001=1999-1998=1\). Since \(\rho_1\le4\), RAdam uses the un-adapted momentum step. The adaptive term switches on once \(\rho_t>4\), about step 5 for these settings.</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 2: AdaBelief versus Adam</span>
+<p>A coordinate has a constant gradient \(g=3\) forever. Compare the steady-state denominators of Adam and AdaBelief (ignore \(\epsilon\)).</p>
+<details><summary>Answer</summary><p>Adam: \(v\to g^2=9\), denominator 3, step \(\hat m/\sqrt{\hat v}=1\), times \(\eta\). AdaBelief: \(m\to3\), \((g-m)^2\to0\), so \(s\to\epsilon\), denominator \(\approx\sqrt\epsilon\) (tiny), so the step is huge. This illustrates why AdaBelief is sensitive to \(\epsilon\) and treats consistent gradients as "high belief".</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 3: memory budget</span>
+<p>For a 7B-parameter model with fp32 optimizer states, compute the optimizer-state memory for AdamW, Lion, 8-bit AdamW, and Muon (matrices only, momentum buffer, ignore the AdamW part for embeddings).</p>
+<details><summary>Answer</summary><p>One fp32 tensor: \(7\times10^9\times4\) bytes = 28 GB. AdamW: 2 tensors = 56 GB. Lion: 28 GB. 8-bit AdamW: 2 tensors at 1 byte = 14 GB (plus small block-maximum overhead). Muon: about 28 GB for the momentum buffer (slightly less since embeddings and vectors use AdamW instead, which has its own larger-per-parameter state on that smaller portion).</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 4: Adafactor savings</span>
+<p>For a \(4096\times11008\) weight matrix, compare Adam's second-moment storage with Adafactor's.</p>
+<details><summary>Answer</summary><p>Adam: \(4096\cdot11008\approx45.1\)M numbers. Adafactor: \(4096+11008=15{,}104\) numbers, about 0.03 percent, a ~3000x reduction for that tensor.</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 5: Lion update size</span>
+<p>Show that Lion's per-step change in every coordinate has magnitude \(\eta\) (ignoring decay). How does the RMS of Lion's update compare with that of Adam's?</p>
+<details><summary>Answer</summary><p>\(\mathrm{sign}(c_t)\in\{-1,+1\}\) (or 0), so \(|\Delta\theta_i|=\eta\). Adam's normalized update \(\hat m/\sqrt{\hat v}\) has magnitude at most about 1 and typically 0.1 to 0.5 for noisy gradients, so Lion's update RMS is several times larger. Hence Lion needs a smaller \(\eta\) and larger \(\lambda\).</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 6: Shampoo is orthogonalization</span>
+<p>Let \(G=\mathrm{diag}(4,1)\) (a \(2\times2\) matrix). Compute \((GG^\top)^{-1/4}\,G\,(G^\top G)^{-1/4}\).</p>
+<details><summary>Answer</summary><p>\(GG^\top=\mathrm{diag}(16,1)\), so \((GG^\top)^{-1/4}=\mathrm{diag}(16^{-1/4},1)=\mathrm{diag}(1/2,1)\). Same for \(G^\top G\). Product: \(\mathrm{diag}(1/2,1)\cdot\mathrm{diag}(4,1)\cdot\mathrm{diag}(1/2,1)=\mathrm{diag}(1,1)=I\), the orthogonal polar factor \(UV^\top\) (here with \(U=V=I\)). Singular values 4 and 1 have been flattened to 1.</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 7: Newton-Schulz scalar map</span>
+<p>Iterate the cubic map \(\sigma\mapsto\frac12(3\sigma-\sigma^3)\) starting at \(\sigma=0.2\) for three steps. What do you observe, and what does it say about tiny singular values?</p>
+<details><summary>Answer</summary><p>\(0.2\to0.5(0.6-0.008)=0.296\to0.5(0.888-0.0259)=0.431\to0.5(1.293-0.0801)=0.606\). Small values grow by a factor of about 1.5 per step (slope \(3/2\) near 0), so many iterations are needed for tiny singular values. This is why Muon's quintic uses a much larger slope at 0 (\(a=3.4445\)), trading exactness for speed.</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 8: SAM perturbation</span>
+<p>For \(J(\theta)=\tfrac12\theta^\top A\theta\), what is the SAM perturbation, and what is the SAM gradient to first order?</p>
+<details><summary>Answer</summary><p>\(\nabla J=A\theta\), \(\hat\epsilon=\rho A\theta/\|A\theta\|\). The SAM gradient is \(A(\theta+\hat\epsilon)=A\theta+\rho A^2\theta/\|A\theta\|\). The extra term amplifies the gradient in high-curvature directions (large eigenvalues of \(A\)), pushing the iterate away from sharp directions.</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 9: weight-decay timescale</span>
+<p>An AdamW run uses \(\eta=3\times10^{-4}\), \(\lambda=0.1\), 100k steps. What is the weight-decay timescale in steps? If you halve the peak \(\eta\) for a larger model, how should \(\lambda\) change to preserve it?</p>
+<details><summary>Answer</summary><p>\(\tau=1/(\eta\lambda)=1/(3\times10^{-5})\approx33{,}000\) steps (about a third of the run). Halving \(\eta\) requires doubling \(\lambda\) to 0.2 to keep \(\eta\lambda\) fixed (neglecting schedule effects).</p></details></div>
+
+<div class="box ex"><span class="t">Exercise 10: implementation project</span>
+<p>Implement Lion, RAdam, AdEMAMix, Cautious-AdamW, and a Muon step (Newton-Schulz quintic) in your own optimizer style. Train a small transformer on a character-level dataset, tune AdamW fairly (grid over learning rate and \(\beta_2\)), and compare at equal steps and equal wall-clock time. Report how much of each claimed gain survives.</p></div>
+
+<!-- ============================================================ -->
+<h2 id="ch27">27. Reading list</h2>
+<ul style="font-size:16px;font-family:var(--sans);line-height:1.5">
+<li>Loshchilov and Hutter. Decoupled Weight Decay Regularization (AdamW), 2019.</li>
+<li>Liu et al. On the Variance of the Adaptive Learning Rate and Beyond (RAdam), 2020.</li>
+<li>Zhuang et al. AdaBelief Optimizer: Adapting Stepsizes by the Belief in Observed Gradients, 2020.</li>
+<li>Zhang et al. Lookahead Optimizer: k steps forward, 1 step back, 2019.</li>
+<li>Xie et al. Adan: Adaptive Nesterov Momentum Algorithm, 2022.</li>
+<li>You et al. Large Batch Training of Convolutional Networks (LARS), 2017; Large Batch Optimization for Deep Learning: Training BERT in 76 minutes (LAMB), 2019.</li>
+<li>Shazeer and Stern. Adafactor, 2018. Luo et al. CAME, 2023.</li>
+<li>Dettmers et al. 8-bit Optimizers via Block-wise Quantization, 2021.</li>
+<li>Zhang et al. Adam-mini: Use Fewer Learning Rates To Gain More, 2024.</li>
+<li>Zhao et al. GaLore: Memory-Efficient LLM Training by Gradient Low-Rank Projection, 2024.</li>
+<li>Bernstein et al. signSGD, 2018. Chen et al. Symbolic Discovery of Optimization Algorithms (Lion), 2023.</li>
+<li>Liu et al. Sophia: A Scalable Stochastic Second-order Optimizer for Language Model Pre-training, 2023.</li>
+<li>Pagliardini et al. The AdEMAMix Optimizer: Better, Faster, Older, 2024.</li>
+<li>Liang et al. Cautious Optimizers: Improving Training with One Line of Code, 2024.</li>
+<li>Martens and Grosse. Optimizing Neural Networks with Kronecker-factored Approximate Curvature, 2015.</li>
+<li>Gupta, Koren, Singer. Shampoo: Preconditioned Stochastic Tensor Optimization, 2018; Anil et al. Scalable Second Order Optimization for Deep Learning, 2020; Shi et al. A Distributed Data-Parallel PyTorch Implementation of the Distributed Shampoo Optimizer, 2023.</li>
+<li>Vyas et al. SOAP: Improving and Stabilizing Shampoo using Adam, 2024.</li>
+<li>Jordan et al. Muon: An optimizer for hidden layers in neural networks (blog and code), 2024. Liu et al. (Moonshot AI) Muon is Scalable for LLM Training, 2025.</li>
+<li>Bernstein and Newhouse. Old Optimizer, New Norm: An Anthology, 2024. Pethick et al. Training Deep Learning Models with Norm-Constrained LMOs (Scion), 2025.</li>
+<li>Defazio et al. The Road Less Scheduled (Schedule-Free), 2024.</li>
+<li>Defazio and Mishchenko. Learning-Rate-Free Learning by D-Adaptation, 2023. Mishchenko and Defazio. Prodigy, 2023.</li>
+<li>Foret et al. Sharpness-Aware Minimization for Efficiently Improving Generalization, 2021.</li>
+<li>Douillard et al. DiLoCo: Distributed Low-Communication Training of Language Models, 2023.</li>
+<li>Yang et al. Tensor Programs V: Tuning Large Neural Networks via Zero-Shot Hyperparameter Transfer (\(\mu\)P), 2022. Hu et al. MiniCPM (WSD schedule), 2024.</li>
+<li>Schmidt, Schneider, Hennig. Descending through a Crowded Valley: Benchmarking Deep Learning Optimizers, 2021. Dahl et al. Benchmarking Neural Network Training Algorithms (AlgoPerf), 2023. Wen et al. Fantastic Pretraining Optimizers and Where to Find Them, 2025.</li>
+</ul>
+</main>
+</div>
+</body>
+</html>

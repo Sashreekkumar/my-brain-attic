@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Normalization Layers: BatchNorm, LayerNorm, InstanceNorm, GroupNorm, RMSNorm</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d2430;--mut:#5d6877;--card:#fff;--bd:#e0ddd5;--ac:#b4410f;--code:#f3f1ea}
+@media(prefers-color-scheme:dark){:root{--bg:#14171c;--fg:#e6e8ec;--mut:#9aa5b5;--card:#1c2027;--bd:#2d333d;--ac:#f08a4b;--code:#10131a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 Georgia,serif}
+main{max-width:920px;margin:auto;padding:28px 18px 70px}
+h1{font-size:2rem;margin:.2em 0}h2{margin-top:2.4em;border-bottom:2px solid var(--ac);padding-bottom:4px}
+h3{margin-top:1.4em;color:var(--ac)}
+.sub{color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px 18px;margin:14px 0}
+.eq{font:15px/1.8 "Cambria Math",Georgia,serif;background:var(--code);border-left:4px solid var(--ac);padding:10px 16px;margin:10px 0;overflow-x:auto;white-space:pre}
+pre{background:var(--code);border:1px solid var(--bd);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.5 ui-monospace,Menlo,monospace}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.9em}
+.tbl{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{border:1px solid var(--bd);padding:7px 9px;text-align:left;vertical-align:top}th{background:var(--code)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px}
+.grid div.p{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px;text-align:center;font-size:.85rem}
+.tag{display:inline-block;background:var(--ac);color:#fff;border-radius:99px;padding:0 10px;font-size:.78rem;margin-right:4px}
+</style></head><body><main>
+
+<h1>Normalization Layers</h1>
+<p class="sub">BatchNorm · LayerNorm · InstanceNorm · GroupNorm · RMSNorm — what they do, why they exist, where to use them.<br>
+Written in simplified technical English (about 80% ASD-STE100 style: short sentences, simple words, one idea per sentence).</p>
+
+<h2>1. The big idea</h2>
+<div class="card">
+<p>Deep networks train badly when the size of the activations changes from layer to layer. Large values make gradients unstable. Small values make them vanish.</p>
+<p>A normalization layer fixes this. It does three steps:</p>
+<ol><li>Find the <b>mean</b> and <b>variance</b> of a group of numbers.</li>
+<li><b>Subtract</b> the mean and <b>divide</b> by the standard deviation.</li>
+<li>Apply a learned <b>scale (γ)</b> and <b>shift (β)</b>, so the network can undo the change if needed.</li></ol>
+<p><b>The only difference between the norms is: which numbers are put in the same group.</b></p></div>
+
+<div class="eq">General form:   y = γ · (x − μ) / √(σ² + ε) + β
+μ  = mean of the group          σ² = variance of the group
+ε  = small number (1e-5) to avoid division by zero</div>
+
+<h2>2. Diagram: which numbers share statistics?</h2>
+<p>Take a tensor of shape (N, C, H, W): N samples, C channels, H×W pixels. Each small square below is one (sample, channel) pair. <b>Squares with the same color share one mean and one variance.</b></p>
+<div class="grid" id="panels"></div>
+<p class="sub" style="font-size:.9rem">Rows = samples (N=4). Columns = channels (C=6). Each square hides the H×W pixels. For a Transformer, read "channel" as "feature" and "sample" as "token".</p>
+
+<h2>3. Each norm in detail</h2>
+
+<h3>BatchNorm (Ioffe &amp; Szegedy, 2015)</h3>
+<div class="card"><span class="tag">Normalizes over</span> the batch and pixels (N, H, W), one set of statistics per channel.</div>
+<div class="eq">μ_c  = (1 / NHW) · Σ_{n,h,w} x_{n,c,h,w}
+σ²_c = (1 / NHW) · Σ_{n,h,w} (x_{n,c,h,w} − μ_c)²
+y    = γ_c · (x − μ_c) / √(σ²_c + ε) + β_c
+Inference:  μ, σ² come from running averages saved during training:
+running = (1 − m) · running + m · batch_stat</div>
+<p><b>Need:</b> Training of deep CNNs was slow and needed very small learning rates. BatchNorm keeps activations stable, allows large learning rates, and acts as a mild regularizer (the batch noise).</p>
+<p><b>Limits:</b> Needs a large batch (≥ 16–32 per device). Training and inference behave differently. Does not fit variable-length sequences well.</p>
+<p><b>Used in:</b> ResNet, EfficientNet, most image classifiers.</p>
+
+<h3>LayerNorm (Ba et al., 2016)</h3>
+<div class="card"><span class="tag">Normalizes over</span> all features of one sample (or one token). No batch dependence.</div>
+<div class="eq">μ  = (1 / D) · Σ_i x_i
+σ² = (1 / D) · Σ_i (x_i − μ)²
+y_i = γ_i · (x_i − μ) / √(σ² + ε) + β_i          D = feature size</div>
+<p><b>Need:</b> BatchNorm fails in RNNs (each time step has different statistics) and with batch size 1. LayerNorm gives the same result in training and inference.</p>
+<p><b>Used in:</b> Transformers (BERT, GPT-2, ViT), LSTM/GRU variants.</p>
+
+<h3>InstanceNorm (Ulyanov et al., 2016)</h3>
+<div class="card"><span class="tag">Normalizes over</span> the pixels (H, W) of one channel of one sample.</div>
+<div class="eq">μ_{n,c}  = (1 / HW) · Σ_{h,w} x_{n,c,h,w}
+σ²_{n,c} = (1 / HW) · Σ_{h,w} (x_{n,c,h,w} − μ_{n,c})²
+y = γ_c · (x − μ_{n,c}) / √(σ²_{n,c} + ε) + β_c</div>
+<p><b>Need:</b> In style transfer, the mean and variance of each channel carry the "style" (contrast, color). InstanceNorm removes the style of the input image, so a new style can be added. (AdaIN replaces γ and β with values from a style image.)</p>
+<p><b>Used in:</b> Style transfer, CycleGAN, StyleGAN-type generators.</p>
+
+<h3>GroupNorm (Wu &amp; He, 2018)</h3>
+<div class="card"><span class="tag">Normalizes over</span> a group of channels (C/G channels) and all pixels, per sample.</div>
+<div class="eq">Split C channels into G groups.  Group g has C/G channels.
+μ_{n,g}  = (1 / (C/G · HW)) · Σ_{c ∈ g, h, w} x_{n,c,h,w}
+σ²_{n,g} = (1 / (C/G · HW)) · Σ_{c ∈ g, h, w} (x − μ_{n,g})²
+y = γ_c · (x − μ_{n,g}) / √(σ²_{n,g} + ε) + β_c
+Special cases:  G = 1 → LayerNorm over (C,H,W);   G = C → InstanceNorm</div>
+<p><b>Need:</b> Detection and segmentation use large images, so the batch is often 1–2. BatchNorm is poor there. GroupNorm does not depend on batch size.</p>
+<p><b>Used in:</b> Mask R-CNN, video models, diffusion U-Nets (Stable Diffusion uses 32 groups).</p>
+
+<h3>RMSNorm (Zhang &amp; Sennrich, 2019)</h3>
+<div class="card"><span class="tag">Normalizes over</span> the same axis as LayerNorm, but <b>does not subtract the mean</b> and has no β.</div>
+<div class="eq">RMS(x) = √( (1 / D) · Σ_i x_i² + ε )
+y_i = γ_i · x_i / RMS(x)</div>
+<p><b>Need:</b> The authors found that the scaling (not the centering) gives most of the benefit of LayerNorm. Skipping the mean saves compute and memory, about 7–60% faster in the norm layer, with similar quality. This matters for large language models.</p>
+<p><b>Used in:</b> LLaMA, Mistral, Gemma, T5 (a variant), and most modern LLMs.</p>
+
+<h2>4. Code from scratch (PyTorch)</h2>
+<p>Only basic tensor operations are used. No <code>nn.BatchNorm</code> or similar.</p>
+<pre>import torch
+import torch.nn as nn
+
+
+class BatchNorm2d(nn.Module):
+    def __init__(self, C, eps=1e-5, momentum=0.1):
+        super().__init__()
+        self.eps, self.m = eps, momentum
+        self.gamma = nn.Parameter(torch.ones(1, C, 1, 1))
+        self.beta = nn.Parameter(torch.zeros(1, C, 1, 1))
+        self.register_buffer("run_mean", torch.zeros(1, C, 1, 1))
+        self.register_buffer("run_var", torch.ones(1, C, 1, 1))
+
+    def forward(self, x):                      # x: (N, C, H, W)
+        if self.training:
+            mean = x.mean(dim=(0, 2, 3), keepdim=True)
+            var = x.var(dim=(0, 2, 3), unbiased=False, keepdim=True)
+            with torch.no_grad():              # update running statistics
+                self.run_mean.mul_(1 - self.m).add_(self.m * mean)
+                self.run_var.mul_(1 - self.m).add_(self.m * var)
+        else:
+            mean, var = self.run_mean, self.run_var
+        x_hat = (x - mean) / torch.sqrt(var + self.eps)
+        return self.gamma * x_hat + self.beta
+
+
+class LayerNorm(nn.Module):
+    def __init__(self, D, eps=1e-5):
+        super().__init__()
+        self.eps = eps
+        self.gamma = nn.Parameter(torch.ones(D))
+        self.beta = nn.Parameter(torch.zeros(D))
+
+    def forward(self, x):                      # x: (..., D)
+        mean = x.mean(dim=-1, keepdim=True)
+        var = x.var(dim=-1, unbiased=False, keepdim=True)
+        return self.gamma * (x - mean) / torch.sqrt(var + self.eps) + self.beta
+
+
+class InstanceNorm2d(nn.Module):
+    def __init__(self, C, eps=1e-5):
+        super().__init__()
+        self.eps = eps
+        self.gamma = nn.Parameter(torch.ones(1, C, 1, 1))
+        self.beta = nn.Parameter(torch.zeros(1, C, 1, 1))
+
+    def forward(self, x):                      # x: (N, C, H, W)
+        mean = x.mean(dim=(2, 3), keepdim=True)
+        var = x.var(dim=(2, 3), unbiased=False, keepdim=True)
+        return self.gamma * (x - mean) / torch.sqrt(var + self.eps) + self.beta
+
+
+class GroupNorm(nn.Module):
+    def __init__(self, G, C, eps=1e-5):
+        super().__init__()
+        assert C % G == 0, "C must be divisible by G"
+        self.G, self.eps = G, eps
+        self.gamma = nn.Parameter(torch.ones(1, C, 1, 1))
+        self.beta = nn.Parameter(torch.zeros(1, C, 1, 1))
+
+    def forward(self, x):                      # x: (N, C, H, W)
+        N, C, H, W = x.shape
+        xg = x.view(N, self.G, -1)             # one row per (sample, group)
+        mean = xg.mean(dim=-1, keepdim=True)
+        var = xg.var(dim=-1, unbiased=False, keepdim=True)
+        x_hat = ((xg - mean) / torch.sqrt(var + self.eps)).view(N, C, H, W)
+        return self.gamma * x_hat + self.beta
+
+
+class RMSNorm(nn.Module):
+    def __init__(self, D, eps=1e-6):
+        super().__init__()
+        self.eps = eps
+        self.gamma = nn.Parameter(torch.ones(D))   # no beta, no mean
+
+    def forward(self, x):                      # x: (..., D)
+        rms = torch.sqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)
+        return self.gamma * x / rms
+
+
+# Quick check against the PyTorch versions
+if __name__ == "__main__":
+    x = torch.randn(4, 6, 8, 8)
+    print(torch.allclose(BatchNorm2d(6)(x), nn.BatchNorm2d(6)(x), atol=1e-5))
+    print(torch.allclose(GroupNorm(2, 6)(x), nn.GroupNorm(2, 6)(x), atol=1e-5))
+    print(torch.allclose(InstanceNorm2d(6)(x), nn.InstanceNorm2d(6)(x), atol=1e-5))
+    t = torch.randn(2, 10, 32)
+    print(torch.allclose(LayerNorm(32)(t), nn.LayerNorm(32)(t), atol=1e-5))</pre>
+
+<h2>5. Use in different architectures</h2>
+<div class="tbl"><table>
+<tr><th>Architecture</th><th>Common choice</th><th>How it is used and why</th></tr>
+<tr><td><b>CNN</b> (ResNet, VGG-BN)</td><td>BatchNorm; GroupNorm if the batch is small</td><td>Placed after each convolution, before the activation: Conv → BN → ReLU. Large image batches give good statistics. For detection or segmentation (batch 1–2), use GroupNorm.</td></tr>
+<tr><td><b>Transformer</b> (BERT, GPT, ViT)</td><td>LayerNorm; RMSNorm in modern LLMs</td><td>Applied to the token vector (size D). The original Transformer used <i>Post-LN</i> (norm after the residual add). Most new models use <i>Pre-LN</i> (norm before attention and MLP), which trains more stably. LLaMA-style models use Pre-RMSNorm. BatchNorm is a poor fit: sequence lengths and padding change the statistics.</td></tr>
+<tr><td><b>LSTM / GRU</b></td><td>LayerNorm</td><td>Applied to the gate pre-activations at each time step (e.g. the input-to-hidden and hidden-to-hidden sums), and sometimes to the cell state. It does not depend on the batch or on the sequence length. BatchNorm needs separate statistics for each time step, so it is hard to use.</td></tr>
+<tr><td><b>DNN / MLP</b></td><td>BatchNorm or LayerNorm</td><td>Linear → Norm → Activation. BatchNorm helps with large batches. LayerNorm is better for small batches, tabular data, and reinforcement learning.</td></tr>
+<tr><td><b>Generative models</b> (GAN, style transfer, diffusion)*</td><td>InstanceNorm, GroupNorm</td><td>InstanceNorm in style transfer and CycleGAN generators (removes per-image style). BatchNorm in DCGAN generators. GroupNorm in diffusion U-Nets. Critics in WGAN-GP avoid BatchNorm (it mixes samples) and use LayerNorm or none.</td></tr>
+</table></div>
+<p class="sub" style="font-size:.9rem">*You wrote "Jev". I read it as generative models (GAN/diffusion). Tell me if you meant something else.</p>
+
+<h2>6. Summary table</h2>
+<div class="tbl"><table>
+<tr><th></th><th>Statistics over</th><th>Depends on batch?</th><th>Train = test?</th><th>Best for</th></tr>
+<tr><td>BatchNorm</td><td>N, H, W (per channel)</td><td>Yes</td><td>No (running stats)</td><td>CNNs, large batch</td></tr>
+<tr><td>LayerNorm</td><td>All features (per sample/token)</td><td>No</td><td>Yes</td><td>Transformers, RNNs</td></tr>
+<tr><td>InstanceNorm</td><td>H, W (per sample, channel)</td><td>No</td><td>Yes</td><td>Style transfer, GAN</td></tr>
+<tr><td>GroupNorm</td><td>Channel group + H, W</td><td>No</td><td>Yes</td><td>Small-batch vision, diffusion</td></tr>
+<tr><td>RMSNorm</td><td>All features, no mean</td><td>No</td><td>Yes</td><td>Large language models</td></tr>
+</table></div>
+
+<div class="card"><b>Quick rule:</b> Image classification with a big batch → BatchNorm. Small batch vision → GroupNorm. Sequence or text model → LayerNorm (or RMSNorm for speed at scale). Style or image generation → InstanceNorm.</div>
+
+</main>
+<script>
+const N=4,C=6,S=24,P=6;
+const specs=[
+ ["BatchNorm",(n,c)=>c,"each column = 1 group"],
+ ["LayerNorm",(n,c)=>n,"each row = 1 group"],
+ ["InstanceNorm",(n,c)=>n*C+c,"each square = 1 group"],
+ ["GroupNorm (G=2)",(n,c)=>n*2+Math.floor(c/3),"3 channels per group"],
+ ["RMSNorm",(n,c)=>n,"like LayerNorm; scale only, no mean"]
+];
+const box=document.getElementById("panels");
+specs.forEach(([t,f,note])=>{
+ let s=`<svg viewBox="0 0 ${C*S+2*P} ${N*S+2*P+14}" width="100%" role="img" aria-label="${t}">`;
+ s+=`<text x="${P}" y="9" font-size="8" fill="currentColor">channels →</text>`;
+ for(let n=0;n<N;n++)for(let c=0;c<C;c++){
+  const g=f(n,c),h=(g*47)%360;
+  s+=`<rect x="${P+c*S}" y="${P+14+n*S}" width="${S-2}" height="${S-2}" rx="3" fill="hsl(${h} 60% 55%)" opacity=".85"/>`;
+ }
+ s+="</svg>";
+ const d=document.createElement("div");d.className="p";
+ d.innerHTML=`<b>${t}</b>${s}<div style="color:var(--mut)">${note}</div>`;
+ box.appendChild(d);
+});
+</script></body></html>
